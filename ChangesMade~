@@ -1,0 +1,49 @@
+Assignment 1
+  1.1
+      param.h: 
+	12) #define MAX_PATH_ENTRIES 	10 //max entries of paths to be allowed
+      exec.c:
+	10) char* pathVariable[MAX_PATH_ENTRIES]={0};
+	23) if((ip = namei(path)) == 0)
+	    for( i=0;i<MAX_PATH_ENTRIES;i++)
+	    {
+	      if(pathVariable[i]!=0 && (ip = namei(path)) != 0)
+		break;
+	    }
+	    if(i>=MAX_PATH_ENTRIES)
+	      return -1;
+  1.2
+      defs.h:
+	22) extern char* pathVariable[];
+      syscall.c:
+	101) extern int sys_add_path(void);
+	125) [SYS_add_path] sys_add_path
+      syscall.h:
+	24) #define SYS_add_path  22
+      usys.S:
+	32) SYSCALL(add_path)
+      sysproc.c:
+	92) // add a path to the pathvariable in exec.c
+	    int
+	    sys_add_path(void)
+	    {
+	      char *path;
+	      uint i;
+		if(argstr(0, &path) < 0)
+		  return -1;
+		for(i=0 ; i<MAX_PATH_ENTRIES ; i++)
+		{
+		  if(pathVariable[i]==0)
+		  {
+		    pathVariable[i]= path;
+		    return 0;
+		  }
+		}
+		return -1;
+	    }
+  1.3
+      user.h:
+	 25) int add_path(char*);
+      adde debug print in sysproc.c line 105
+      added file export.c
+      added export.c in makefile (everywhere ls.c was)
