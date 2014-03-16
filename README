@@ -315,3 +315,4 @@ user.h:
 	26)	
 		int wait2(int*, int*, int*);
 			
+Task3 :
