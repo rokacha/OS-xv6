@@ -24,11 +24,11 @@ Extension 1
 1.2
       	defs.h:
 	25)  int definition_add_path(char*);
-	141) char* 	newstrcat(char*,char*,char*);
+	142) char* 	newstrcat(char*,char*,char*);
 
       	syscall.c:
 	101) extern int sys_add_path(void);
-	125) [SYS_add_path] sys_add_path
+	126) [SYS_add_path] sys_add_path
 
       	syscall.h:
 	24) #define SYS_add_path  22
@@ -198,25 +198,120 @@ Task 2
         p->etime=0;
         p->changed_status_time=0;
         p->iotime=0;	
-	315)
+
+
+    275)
+    	int 
+			wait2(int *wtime, int *rtime, int *iotime)
+			{
+			struct proc *p;
+			  int havekids, pid;
+
+			  acquire(&ptable.lock);
+			  for(;;){
+			    // Scan through table looking for zombie children.
+			    havekids = 0;
+			    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+			      if(p->parent != proc)
+			        continue;
+			      havekids = 1;
+			      if(p->state == ZOMBIE){
+			        // Found one.
+			        pid = p->pid;
+			        kfree(p->kstack);
+			        p->kstack = 0;
+			        freevm(p->pgdir);
+			        p->state = UNUSED;
+			        p->pid = 0;
+			        p->parent = 0;
+			        p->name[0] = 0;
+			        p->killed = 0;
+			        *wtime=p->etime-p->ctime-p->rtime-p->iotime;
+			        *rtime=p->rtime;
+			        *iotime=p->iotime;
+			        p->ctime=0;
+			        p->rtime=0;
+			        p->etime=0;
+			        p->changed_status_time=0;
+			        p->iotime=0;
+			        release(&ptable.lock);
+			        return pid;
+			      }
+			    }
+
+			    // No point waiting if we don't have any children.
+			    if(!havekids || proc->killed){
+			      release(&ptable.lock);
+			      return -1;
+			    }
+
+			    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+			    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+			  }
+			}
+	 	   
+	375)
 		p->changed_status_time=get_time();
-	353)
+	377)
 		proc->rtime += get_time()-proc->changed_status_time;
-	404)
+		 p->changed_status_time=get_time(); 
+	415)
 		proc->rtime += get_time()-proc->changed_status_time;
   		proc->changed_status_time = get_time();
-  	430)
+  	467)
+		proc->rtime += get_time()-proc->changed_status_time;
+  		proc->changed_status_time = get_time();
+  	493)
       	p->iotime += get_time()-p->changed_status_time;
       	p->changed_status_time=get_time();
-    461)
-        p->changed_status_time=get_time();
-        p->state = RUNNABLE;
-	    }
-	    else{
-	      if(p->state== RUNNABLE){
-	      p->rtime += get_time()-p->changed_status_time;
-	      p->changed_status_time=get_time();
-	    }
-	505)
+    523)
+      	p->iotime += get_time()-p->changed_status_time;
+      	p->changed_status_time=get_time();
+    
+	563)
 		cprintf("id:%d status:%s name:%s\n", p->pid, state, p->name);
 	    cprintf("ctime:%d rtime:%d iotime:%d etime:%d\n", p->ctime, p->rtime, p->iotime,p->etime);
+sysproc.c:
+
+	106)
+		int
+			sys_wait2(void)
+			{
+			  int wtime;
+			  int rtime;
+			  int iotime;
+			  if(argint(0, &wtime) < 0){
+			      return -1;
+			    }
+			    if(argint(1, &rtime) < 0){
+			      return -1;
+			    }
+			    if(argint(2, &iotime) < 0){
+			      return -1;
+			    }
+			return wait2((int *)wtime,(int *)rtime,(int *)iotime);
+
+			}
+defs.h:
+	
+	120) 
+			int 			wait2(int*, int*, int*);
+
+syscall.c:
+	102) 
+		extern int sys_wait2(void);
+	127) 
+		[SYS_wait2]    sys_wait2
+
+syscall.h:
+	25) 
+		#define SYS_wait2  23
+
+usys.S:
+	33)
+		SYSCALL(wait2)
+
+user.h:
+	26)	
+		int wait2(int*, int*, int*);
+			
