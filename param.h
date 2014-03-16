@@ -10,4 +10,6 @@
 #define MAXARG       		32 // max exec arguments
 #define LOGSIZE      		10 // max data sectors in on-disk log
 #define MAX_PATH_ENTRIES 	10 //max entries of paths to be allowed 
-#define INPUT_BUF 128
+#define INPUT_BUF 			128// max input size
+#define QUANTA				5// the number of ticks in one run
+#define DEFAULT_SCHED 		1 // default scheduling policy

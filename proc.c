@@ -1,3 +1,7 @@
+#ifndef SCHEDFLAG
+  SCHEDFLAG=DEFAULT_SCHED
+#endif
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -321,11 +325,6 @@ struct proc *p;
   }
 }
 
-
-
-
-
-
 void
 register_handler(sighandler_t sighandler)
 {
@@ -362,13 +361,14 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    if(SCHEDFLAG==DEFAULT_SCHED){
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -382,6 +382,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       proc = 0;
     }
+  }
     release(&ptable.lock);
 
   }
@@ -568,6 +569,7 @@ procdump(void)
         cprintf("%p  ", pc[i]);
     }
     cprintf("\n");
+    cprintf("SCHEFLAG is : %d",SCHEDFLAG);
   }
 }
 
