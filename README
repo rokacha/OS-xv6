@@ -184,19 +184,32 @@ Task 2
 		}
 	62)
 		//update time of creation
-		p->ctime=get_time();
-	200)
-		proc->etime=get_time();
-	311)
+  		p->ctime=get_time();
+  		p->etime=0;
+  		p->iotime=0;
+  		p->rtime=0;
+	203)
+		proc->rtime=get_time()-proc->changed_status_time;
+  		proc->etime=get_time();
+	315)
 		p->changed_status_time=get_time();
-	349)
+	353)
 		proc->rtime += get_time()-proc->changed_status_time;
-	400)
+	404)
 		proc->rtime += get_time()-proc->changed_status_time;
   		proc->changed_status_time = get_time();
-  	426)
+  	430)
       	p->iotime += get_time()-p->changed_status_time;
       	p->changed_status_time=get_time();
-    456)
-        p->iotime += get_time()-p->changed_status_time;
+    461)
         p->changed_status_time=get_time();
+        p->state = RUNNABLE;
+	    }
+	    else{
+	      if(p->state== RUNNABLE){
+	      p->rtime += get_time()-p->changed_status_time;
+	      p->changed_status_time=get_time();
+	    }
+	505)
+		cprintf("id:%d status:%s name:%s\n", p->pid, state, p->name);
+	    cprintf("ctime:%d rtime:%d iotime:%d etime:%d\n", p->ctime, p->rtime, p->iotime,p->etime);

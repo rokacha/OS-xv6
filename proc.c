@@ -61,6 +61,9 @@ found:
 
   //update time of creation
   p->ctime=get_time();
+  p->etime=0;
+  p->iotime=0;
+  p->rtime=0;
 
   release(&ptable.lock);
 
@@ -113,7 +116,7 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
+  
   p->state = RUNNABLE;
 }
 
@@ -197,6 +200,7 @@ exit(void)
 
   iput(proc->cwd);
   proc->cwd = 0;
+  proc->rtime=get_time()-proc->changed_status_time;
   proc->etime=get_time();
 
   acquire(&ptable.lock);
@@ -452,10 +456,17 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING){
         p->iotime += get_time()-p->changed_status_time;
         p->changed_status_time=get_time();
         p->state = RUNNABLE;
+      }
+      else{
+        if(p->state== RUNNABLE){
+        p->rtime += get_time()-p->changed_status_time;
+        p->changed_status_time=get_time();
+        }
+      }
       release(&ptable.lock);
       return 0;
     }
@@ -483,7 +494,7 @@ procdump(void)
   struct proc *p;
   char *state;
   uint pc[10];
-  
+  cprintf("Process List:\n");
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -491,11 +502,12 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("id:%d status:%s name:%s\n", p->pid, state, p->name);
+    cprintf("ctime:%d rtime:%d iotime:%d etime:%d\n", p->ctime, p->rtime, p->iotime,p->etime);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
-        cprintf(" %p", pc[i]);
+        cprintf("%p  ", pc[i]);
     }
     cprintf("\n");
   }
