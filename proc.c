@@ -20,6 +20,17 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+//used to get the number of ticks since the clock started
+int
+get_time(){
+  uint rticks;
+
+  acquire(&tickslock);
+  rticks=ticks;
+  release(&tickslock);
+return rticks;
+}
+
 void
 pinit(void)
 {
@@ -47,6 +58,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
+  //update time of creation
+  p->ctime=get_time();
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -182,6 +197,7 @@ exit(void)
 
   iput(proc->cwd);
   proc->cwd = 0;
+  proc->etime=get_time();
 
   acquire(&ptable.lock);
 
@@ -292,6 +308,7 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      p->changed_status_time=get_time();
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
@@ -329,6 +346,7 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
+  proc->rtime += get_time()-proc->changed_status_time;
   proc->state = RUNNABLE;
   sched();
   release(&ptable.lock);
@@ -379,6 +397,9 @@ sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   proc->chan = chan;
   proc->state = SLEEPING;
+  proc->rtime += get_time()-proc->changed_status_time;
+  proc->changed_status_time = get_time();
+  
   sched();
 
   // Tidy up.
@@ -401,7 +422,12 @@ wakeup1(void *chan)
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
+    {
+      p->iotime += get_time()-p->changed_status_time;
+      p->changed_status_time=get_time();
       p->state = RUNNABLE;
+    }
+    
 }
 
 // Wake up all processes sleeping on chan.
@@ -427,6 +453,8 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
+        p->iotime += get_time()-p->changed_status_time;
+        p->changed_status_time=get_time();
         p->state = RUNNABLE;
       release(&ptable.lock);
       return 0;
@@ -436,7 +464,7 @@ kill(int pid)
   return -1;
 }
 
-//PAGEBREAK: 36
+//PAGEBREAK: 36f
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.

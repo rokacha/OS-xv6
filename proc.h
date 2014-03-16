@@ -15,11 +15,6 @@ struct cpu {
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
 
-  //Time Related fields
-  uint ctime;       //creation time
-  uint etime;       //end time
-  uint iotime;      //waiting for I/O time
-  uint rtime;       //running time
 };
 
 extern struct cpu cpus[NCPU];
@@ -74,6 +69,13 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  //Time Related fields
+  uint ctime;                  //creation time
+  uint etime;                  //end time
+  uint iotime;                 //waiting for I/O time
+  uint rtime;                  //running time
+  uint changed_status_time;    //time of last changed status
 };
 
 // Process memory is laid out contiguously, low addresses first:

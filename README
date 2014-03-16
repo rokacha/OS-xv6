@@ -158,9 +158,45 @@ Extension 2
 	 	}
 Task 2
 	proc.h:
-	18)
+	72)
 		//Time Related fields
 		uint ctime;       //creation time
   		uint etime;       //end time
   		uint iotime;      //waiting for I/O time
   		uint rtime;       //running time
+  	proc.c:
+  	23)
+  		//used to get the number of ticks since the clock started
+		int
+		get_time(){
+		  uint rticks;
+
+		  acquire(&tickslock);
+		  rticks=ticks;
+		  release(&tickslock);
+		return rticks;
+		}
+
+		void
+		pinit(void)
+		{
+		  initlock(&ptable.lock, "ptable");
+		}
+	62)
+		//update time of creation
+		p->ctime=get_time();
+	200)
+		proc->etime=get_time();
+	311)
+		p->changed_status_time=get_time();
+	349)
+		proc->rtime += get_time()-proc->changed_status_time;
+	400)
+		proc->rtime += get_time()-proc->changed_status_time;
+  		proc->changed_status_time = get_time();
+  	426)
+      	p->iotime += get_time()-p->changed_status_time;
+      	p->changed_status_time=get_time();
+    456)
+        p->iotime += get_time()-p->changed_status_time;
+        p->changed_status_time=get_time();
