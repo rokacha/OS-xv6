@@ -200,7 +200,7 @@ exit(void)
 
   iput(proc->cwd);
   proc->cwd = 0;
-  proc->rtime=get_time()-proc->changed_status_time;
+  proc->rtime+=get_time()-proc->changed_status_time;
   proc->etime=get_time();
 
   acquire(&ptable.lock);
@@ -250,6 +250,11 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        p->ctime=0;
+        p->rtime=0;
+        p->etime=0;
+        p->changed_status_time=0;
+        p->iotime=0;
         release(&ptable.lock);
         return pid;
       }
@@ -265,6 +270,61 @@ wait(void)
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+
+int 
+wait2(int *wtime, int *rtime, int *iotime)
+{
+struct proc *p;
+  int havekids, pid;
+
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != proc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        *wtime=p->etime-p->ctime-p->rtime-p->iotime;
+        *rtime=p->rtime;
+        *iotime=p->iotime;
+        p->ctime=0;
+        p->rtime=0;
+        p->etime=0;
+        p->changed_status_time=0;
+        p->iotime=0;
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
+
+
+
+
 
 void
 register_handler(sighandler_t sighandler)
@@ -314,6 +374,8 @@ scheduler(void)
       p->state = RUNNING;
       p->changed_status_time=get_time();
       swtch(&cpu->scheduler, proc->context);
+      p->rtime+=get_time()-p->changed_status_time;
+      p->changed_status_time=get_time(); 
       switchkvm();
 
       // Process is done running for now.
@@ -351,6 +413,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->rtime += get_time()-proc->changed_status_time;
+  proc->changed_status_time=get_time();
   proc->state = RUNNABLE;
   sched();
   release(&ptable.lock);
@@ -461,12 +524,7 @@ kill(int pid)
         p->changed_status_time=get_time();
         p->state = RUNNABLE;
       }
-      else{
-        if(p->state== RUNNABLE){
-        p->rtime += get_time()-p->changed_status_time;
-        p->changed_status_time=get_time();
-        }
-      }
+      
       release(&ptable.lock);
       return 0;
     }

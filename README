@@ -191,6 +191,13 @@ Task 2
 	203)
 		proc->rtime=get_time()-proc->changed_status_time;
   		proc->etime=get_time();
+
+  	253) 
+  	     p->ctime=0;
+        p->rtime=0;
+        p->etime=0;
+        p->changed_status_time=0;
+        p->iotime=0;	
 	315)
 		p->changed_status_time=get_time();
 	353)

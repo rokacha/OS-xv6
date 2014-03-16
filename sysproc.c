@@ -102,4 +102,22 @@ else{
   }
   return 0;  
 }
+ 
+int
+sys_wait2(void)
+{
+  int wtime;
+  int rtime;
+  int iotime;
+  if(argint(0, &wtime) < 0){
+      return -1;
+    }
+    if(argint(1, &rtime) < 0){
+      return -1;
+    }
+    if(argint(2, &iotime) < 0){
+      return -1;
+    }
+return wait2((int *)wtime,(int *)rtime,(int *)iotime);
 
+}
