@@ -316,3 +316,4 @@ user.h:
 		int wait2(int*, int*, int*);
 			
 Task3 :
+		trap.c line 24 arg2 was change from 1 to QUANTA

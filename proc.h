@@ -76,6 +76,7 @@ struct proc {
   uint iotime;                 //waiting for I/O time
   uint rtime;                  //running time
   uint changed_status_time;    //time of last changed status
+  int quanta;
 };
 
 // Process memory is laid out contiguously, low addresses first:

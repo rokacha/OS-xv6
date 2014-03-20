@@ -11,6 +11,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -35,6 +36,45 @@ get_time(){
 return rticks;
 }
 
+
+
+
+
+void
+sleepingUpDate(void)
+{
+     struct proc *p;
+  acquire(&ptable.lock);
+     
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        
+            if(p->state == SLEEPING){
+              p->iotime++;
+              
+            }
+            if(p->state == RUNNING){
+              p->rtime++;
+              p->quanta--;
+              
+            }
+          
+        }
+ release(&ptable.lock);
+}
+
+
+
+void
+changeStatus(enum procstate s,struct proc* p)
+{
+  p->state=s;
+  if(s==RUNNABLE){}
+    //////////////////////// add to queue //////////////////
+    if(s==RUNNING)
+      p->quanta=QUANTA;
+}
+
+
 void
 pinit(void)
 {
@@ -51,7 +91,7 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-
+  
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
@@ -60,12 +100,11 @@ allocproc(void)
   return 0;
 
 found:
-  p->state = EMBRYO;
+  changeStatus(EMBRYO,p);
   p->pid = nextpid++;
 
   //update time of creation
   p->ctime=get_time();
-  p->etime=0;
   p->iotime=0;
   p->rtime=0;
 
@@ -73,7 +112,7 @@ found:
 
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
-    p->state = UNUSED;
+    changeStatus(UNUSED,p);
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -94,6 +133,8 @@ found:
 
   return p;
 }
+
+
 
 //PAGEBREAK: 32
 // Set up first user process.
@@ -121,7 +162,7 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
   
-  p->state = RUNNABLE;
+  changeStatus(RUNNABLE,p);
 }
 
 // Grow current process's memory by n bytes.
@@ -161,7 +202,7 @@ fork(void)
   if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
-    np->state = UNUSED;
+    changeStatus(UNUSED,np);
     return -1;
   }
   np->sz = proc->sz;
@@ -177,7 +218,7 @@ fork(void)
   np->cwd = idup(proc->cwd);
  
   pid = np->pid;
-  np->state = RUNNABLE;
+  changeStatus(RUNNABLE,np);
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
 }
@@ -204,7 +245,6 @@ exit(void)
 
   iput(proc->cwd);
   proc->cwd = 0;
-  proc->rtime+=get_time()-proc->changed_status_time;
   proc->etime=get_time();
 
   acquire(&ptable.lock);
@@ -222,7 +262,7 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
-  proc->state = ZOMBIE;
+  changeStatus(ZOMBIE,proc);
   sched();
   panic("zombie exit");
 }
@@ -249,16 +289,12 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
-        p->state = UNUSED;
+        changeStatus(UNUSED,p);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        p->ctime=0;
-        p->rtime=0;
-        p->etime=0;
-        p->changed_status_time=0;
-        p->iotime=0;
+       
         release(&ptable.lock);
         return pid;
       }
@@ -296,7 +332,7 @@ struct proc *p;
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
-        p->state = UNUSED;
+        changeStatus(UNUSED,p);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
@@ -304,11 +340,7 @@ struct proc *p;
         *wtime=p->etime-p->ctime-p->rtime-p->iotime;
         *rtime=p->rtime;
         *iotime=p->iotime;
-        p->ctime=0;
-        p->rtime=0;
-        p->etime=0;
-        p->changed_status_time=0;
-        p->iotime=0;
+        
         release(&ptable.lock);
         return pid;
       }
@@ -324,6 +356,9 @@ struct proc *p;
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+
+
 
 void
 register_handler(sighandler_t sighandler)
@@ -371,11 +406,8 @@ scheduler(void)
 
       proc = p;
       switchuvm(p);
-      p->state = RUNNING;
-      p->changed_status_time=get_time();
+      changeStatus(RUNNING,p);
       swtch(&cpu->scheduler, proc->context);
-      p->rtime+=get_time()-p->changed_status_time;
-      p->changed_status_time=get_time(); 
       switchkvm();
 
       // Process is done running for now.
@@ -383,6 +415,7 @@ scheduler(void)
       proc = 0;
     }
   }
+  
     release(&ptable.lock);
 
   }
@@ -413,9 +446,7 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  proc->rtime += get_time()-proc->changed_status_time;
-  proc->changed_status_time=get_time();
-  proc->state = RUNNABLE;
+   changeStatus(RUNNABLE,proc);
   sched();
   release(&ptable.lock);
 }
@@ -464,10 +495,8 @@ sleep(void *chan, struct spinlock *lk)
 
   // Go to sleep.
   proc->chan = chan;
-  proc->state = SLEEPING;
-  proc->rtime += get_time()-proc->changed_status_time;
-  proc->changed_status_time = get_time();
-  
+   changeStatus(SLEEPING,proc);
+ 
   sched();
 
   // Tidy up.
@@ -491,9 +520,7 @@ wakeup1(void *chan)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan)
     {
-      p->iotime += get_time()-p->changed_status_time;
-      p->changed_status_time=get_time();
-      p->state = RUNNABLE;
+      changeStatus(RUNNABLE,p);
     }
     
 }
@@ -521,9 +548,7 @@ kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING){
-        p->iotime += get_time()-p->changed_status_time;
-        p->changed_status_time=get_time();
-        p->state = RUNNABLE;
+        changeStatus(RUNNABLE,p);
       }
       
       release(&ptable.lock);
@@ -563,14 +588,16 @@ procdump(void)
       state = "???";
     cprintf("id:%d status:%s name:%s\n", p->pid, state, p->name);
     cprintf("ctime:%d rtime:%d iotime:%d etime:%d\n", p->ctime, p->rtime, p->iotime,p->etime);
+        cprintf("quanta is:%d\n", p->quanta);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf("%p  ", pc[i]);
     }
     cprintf("\n");
-    cprintf("SCHEFLAG is : %d",SCHEDFLAG);
+
   }
+      cprintf("SCHEFLAG is : %d\n",SCHEDFLAG);
 }
 
 

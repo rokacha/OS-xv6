@@ -13,3 +13,4 @@
 #define INPUT_BUF 			128// max input size
 #define QUANTA				5// the number of ticks in one run
 #define DEFAULT_SCHED 		1 // default scheduling policy
+#define FRR					2

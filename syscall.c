@@ -101,6 +101,7 @@ extern int sys_uptime(void);
 extern int sys_add_path(void);
 extern int sys_wait2(void);
 
+
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
