@@ -19,6 +19,10 @@ struct {
 
 static struct proc *initproc;
 
+static int pidQueue[NPROC]={0};
+static int queueStart=0;
+static int endStart=0;
+
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
@@ -37,9 +41,6 @@ return rticks;
 }
 
 
-
-
-
 void
 sleepingUpDate(void)
 {
@@ -55,9 +56,7 @@ sleepingUpDate(void)
             if(p->state == RUNNING){
               p->rtime++;
               p->quanta--;
-              
             }
-          
         }
  release(&ptable.lock);
 }
@@ -68,10 +67,18 @@ void
 changeStatus(enum procstate s,struct proc* p)
 {
   p->state=s;
-  if(s==RUNNABLE){}
-    //////////////////////// add to queue //////////////////
-    if(s==RUNNING)
-      p->quanta=QUANTA;
+  if(s==RUNNABLE)
+  {
+    switch(SCHEDFLAG):
+    case FRR_SCHED:
+    
+    break;
+    default:
+    break;
+
+  }
+  if(s==RUNNING)
+    p->quanta=QUANTA;
 }
 
 
