@@ -40,6 +40,16 @@ get_time(){
 return rticks;
 }
 
+<<<<<<< HEAD
+=======
+void
+pinit(void)
+{
+  initlock(&ptable.lock, "ptable");
+}
+
+
+>>>>>>> 1f618d88b0d5791a945b5282ec67136e3521b3b4
 
 void
 sleepingUpDate(void)
@@ -82,11 +92,7 @@ changeStatus(enum procstate s,struct proc* p)
 }
 
 
-void
-pinit(void)
-{
-  initlock(&ptable.lock, "ptable");
-}
+
 
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.

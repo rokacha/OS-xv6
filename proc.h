@@ -75,7 +75,6 @@ struct proc {
   uint etime;                  //end time
   uint iotime;                 //waiting for I/O time
   uint rtime;                  //running time
-  uint changed_status_time;    //time of last changed status
   int quanta;
 };
 
