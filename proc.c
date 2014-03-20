@@ -19,9 +19,9 @@ struct {
 
 static struct proc *initproc;
 
-static int pidQueue[NPROC]={0};
-static int queueStart=0;
-static int endStart=0;
+static int pidQueue[NPROC+1]={-1};
+static int queueCurrent=0;
+static int queueEnd=0;
 
 int nextpid = 1;
 extern void forkret(void);
@@ -40,8 +40,6 @@ get_time(){
 return rticks;
 }
 
-<<<<<<< HEAD
-=======
 void
 pinit(void)
 {
@@ -49,12 +47,13 @@ pinit(void)
 }
 
 
->>>>>>> 1f618d88b0d5791a945b5282ec67136e3521b3b4
+
 
 void
 sleepingUpDate(void)
 {
      struct proc *p;
+
   acquire(&ptable.lock);
      
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -71,24 +70,59 @@ sleepingUpDate(void)
  release(&ptable.lock);
 }
 
-
+int
+findIndxOfProc(struct proc* np){
+  
+   
+     int i;
+  for(i=0; i <= NPROC; i++)
+  {
+    if((&ptable.proc[i])->pid == np->pid){
+      break;   
+    }
+  }
+ 
+ if(i>NPROC)
+  i=-1;
+ return i;
+}
 
 void
 changeStatus(enum procstate s,struct proc* p)
 {
+  int location = findIndxOfProc(p);
+  if(location<0)
+    cprintf("Cant find any processes with pid %d\n",p->pid);
   p->state=s;
-  if(s==RUNNABLE)
-  {
-    switch(SCHEDFLAG):
-    case FRR_SCHED:
-    
-    break;
-    default:
-    break;
 
-  }
-  if(s==RUNNING)
-    p->quanta=QUANTA;
+    switch(SCHEDFLAG){
+      case FRR:
+        if(s==RUNNABLE)
+        {
+          pidQueue[queueEnd++]=location;
+        }
+        if(s==RUNNING){
+          pidQueue[location]=-1;
+          p->quanta=QUANTA;
+        }
+        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
+          pidQueue[location]=-1;
+        }
+
+
+      break;
+      default:
+
+        if(s==RUNNING){
+        
+          p->quanta=QUANTA;
+        }
+
+      break;
+    }
+
+  
+
 }
 
 
@@ -409,30 +443,54 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    if(SCHEDFLAG==DEFAULT_SCHED){
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-
-      proc = p;
-      switchuvm(p);
-      changeStatus(RUNNING,p);
-      swtch(&cpu->scheduler, proc->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      proc = 0;
+    switch(SCHEDFLAG){
+    case FRR:
+    while(pidQueue[queueCurrent]==-1 )
+    {
+      queueCurrent=(queueCurrent+1)%NPROC;
     }
+
+    proc = &ptable.proc[pidQueue[queueCurrent]];
+    p = proc;
+    switchuvm(p);
+    changeStatus(RUNNING,p);
+    swtch(&cpu->scheduler, proc->context);
+    switchkvm();
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    proc = 0;
+
+    break;
+    
+    default:
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE)
+          continue;
+      
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+
+        proc = p;
+        switchuvm(p);
+        changeStatus(RUNNING,p);
+        swtch(&cpu->scheduler, proc->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        proc = 0;
+      }
+    break;
+    }
+        release(&ptable.lock);
   }
   
-    release(&ptable.lock);
 
-  }
+
 }
+
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state.

@@ -1,3 +1,4 @@
+
 #define NPROC        		64 // maximum number of processes
 #define KSTACKSIZE 		4096 // size of per-process kernel stack
 #define NCPU          		8  // maximum number of CPUs
@@ -13,4 +14,4 @@
 #define INPUT_BUF 			128// max input size
 #define QUANTA				5// the number of ticks in one run
 #define DEFAULT_SCHED 		1 // default scheduling policy
-#define FRR					2
+#define FRR					2//FIFO round robin scheduling policy
