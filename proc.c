@@ -40,23 +40,16 @@ get_time(){
 return rticks;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> e7e0f9d9f508d45217e2f5adb782e91320831a90
+
 void
 pinit(void)
 {
+  int i;
   initlock(&ptable.lock, "ptable");
+    for(i=0;i<NPROC+1;i++)
+    pidQueue[i]=-1;
 }
 
-
-<<<<<<< HEAD
-=======
->>>>>>> 832142945975c7b47a6ddb36f636a1be878fcaa7
-=======
-
->>>>>>> e7e0f9d9f508d45217e2f5adb782e91320831a90
 
 void
 sleepingUpDate(void)
@@ -97,6 +90,25 @@ findIndxOfProc(struct proc* np){
 }
 
 void
+fixQueue(){
+  int i;
+  for(i=0;i<queueEnd;i++)
+  {
+    if(pidQueue[i]==-1){
+       pidQueue[i]=pidQueue[i+1];
+       pidQueue[i+1]=-1;
+
+    
+        }
+  }
+  while(queueEnd>0 && pidQueue[queueEnd-1]==-1){
+
+    
+    queueEnd--;
+  }
+}
+
+void
 changeStatus(enum procstate s,struct proc* p)
 {
   int location = findIndxOfProc(p);
@@ -106,18 +118,19 @@ changeStatus(enum procstate s,struct proc* p)
 
     switch(SCHEDFLAG){
       case FRR:
+      //cprintf("got to here and got %s pid is %d\n",s,p->pid);
         if(s==RUNNABLE)
         {
           pidQueue[queueEnd++]=location;
         }
         if(s==RUNNING){
-          pidQueue[location]=-1;
+          //pidQueue[queueCurrent]=-1;
           p->quanta=QUANTA;
         }
         if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
-          pidQueue[location]=-1;
+          pidQueue[queueCurrent]=-1;
         }
-
+        fixQueue();
 
       break;
       default:
@@ -129,9 +142,6 @@ changeStatus(enum procstate s,struct proc* p)
 
       break;
     }
-
-  
-
 }
 
 
@@ -199,7 +209,6 @@ userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
-  
   p = allocproc();
   initproc = p;
   if((p->pgdir = setupkvm(kalloc)) == 0)
@@ -445,7 +454,7 @@ void
 scheduler(void)
 {
   struct proc *p;
-
+    //int i;
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -453,23 +462,26 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     switch(SCHEDFLAG){
+
     case FRR:
-    while(pidQueue[queueCurrent]==-1 )
-    {
-      queueCurrent=(queueCurrent+1)%NPROC;
-    }
+//for(i=0;i<NPROC;i++)
+  //cprintf("queue in place %d is %d\n",i,pidQueue[i]);
+      for(queueCurrent=0;queueCurrent<queueEnd;queueCurrent++)
+      {
+           
+        if(pidQueue[queueCurrent]!=-1){
+          proc = &ptable.proc[pidQueue[queueCurrent]];
+          p = proc;
+          switchuvm(p);
+          changeStatus(RUNNING,p);
+          swtch(&cpu->scheduler, proc->context);
+          switchkvm();
 
-    proc = &ptable.proc[pidQueue[queueCurrent]];
-    p = proc;
-    switchuvm(p);
-    changeStatus(RUNNING,p);
-    swtch(&cpu->scheduler, proc->context);
-    switchkvm();
-
-    // Process is done running for now.
-    // It should have changed its p->state before coming back.
-    proc = 0;
-
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          proc = 0;
+        }
+      }
     break;
     
     default:
