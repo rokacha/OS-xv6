@@ -70,6 +70,11 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
+  //Scheduling related fields
+
+  int queue;
+  int placeInQueue;
+
   //Time Related fields
   uint ctime;                  //creation time
   uint etime;                  //end time

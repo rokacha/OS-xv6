@@ -53,10 +53,13 @@ endif
 
 #adding the flag for scheduling policy
 ifndef SCHEDFLAG
-
-SCHEDFLAG=DEFAULT_SCHED
-
+	SCHEDFLAG = DEFAULT
 endif
+
+ifeq (SCHEDFLAG,3Q)
+	SCHEDFLAG = THREEQ
+endif
+
 
 # If the makefile can't find QEMU, specify its path here
 QEMU = qemu-system-x86_64
