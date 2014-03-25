@@ -56,9 +56,6 @@ ifndef SCHEDFLAG
 	SCHEDFLAG = DEFAULT
 endif
 
-ifeq (SCHEDFLAG,3Q)
-	SCHEDFLAG = THREEQ
-endif
 
 
 # If the makefile can't find QEMU, specify its path here
@@ -86,7 +83,7 @@ OBJDUMP = $(TOOLPREFIX)objdump
 #CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-CFLAGS += -D SCHEDFLAG=$(SCHEDFLAG)
+CFLAGS += -D SCHEDFLAG=SCHED_$(SCHEDFLAG)
 
 ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
 # FreeBSD ld wants ``elf_i386_fbsd''

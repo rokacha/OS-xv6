@@ -158,197 +158,377 @@ Extension 2
 	 	}
 Task 2
 	proc.h:
-	74)
-		//Time Related fields
-		uint ctime;       //creation time
-  		uint etime;       //end time
-  		uint iotime;      //waiting for I/O time
-  		uint rtime;       //running time
-  		int  qanta
+		74)
+			//Time Related fields
+			uint ctime;       //creation time
+	  		uint etime;       //end time
+	  		uint iotime;      //waiting for I/O time
+	  		uint rtime;       //running time
+	  		int  qanta
   	proc.c:
-  	29)
-  		//used to get the number of ticks since the clock started
-		int
-		get_time(){
-		  uint rticks;
+	  	29)
+	  		//used to get the number of ticks since the clock started
+			int
+			get_time(){
+			  uint rticks;
 
-		  acquire(&tickslock);
-		  rticks=ticks;
-		  release(&tickslock);
-		return rticks;
-		}
+			  acquire(&tickslock);
+			  rticks=ticks;
+			  release(&tickslock);
+			return rticks;
+			}
 
-		void
-		pinit(void)
-		{
-		  initlock(&ptable.lock, "ptable");
-		}
-	47)
-		void
-			sleepingUpDate(void)
+			void
+			pinit(void)
 			{
-			     struct proc *p;
+			  initlock(&ptable.lock, "ptable");
+			}
+		47)
+			void
+				sleepingUpDate(void)
+				{
+				     struct proc *p;
+				  acquire(&ptable.lock);
+				     
+				  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+				        
+				            if(p->state == SLEEPING){
+				              p->iotime++;
+				              
+				            }
+				            if(p->state == RUNNING){
+				              p->rtime++;
+				              p->quanta--;
+				              
+				            }
+				          
+				        }
+				 release(&ptable.lock);
+				}
+
+				void
+				changeStatus(enum procstate s,struct proc* p)
+				{
+				  p->state=s;
+				  if(s==RUNNABLE){}
+				    //////////////////////// add to queue //////////////////
+				    if(s==RUNNING)
+				      p->quanta=QUANTA;
+				}
+
+
+		103)  changeStatus(EMBRYO,p);
+			
+
+		106)
+			//update time of creation
+	  		p->ctime=get_time();
+	  		p->iotime=0;
+	  		p->rtime=0;
+
+
+	  	115)  changeStatus(UNUSED,p);
+	  	
+	  	165) changeStatus(RUNNABLE,p);	
+
+	  	205)  changeStatus(UNUSED,np);
+	  	221) changeStatus(RUNNABLE,np);
+	  	248)  proc->etime=get_time();
+		265) changeStatus(ZOMBIE,proc);
+
+		292) changeStatus(UNUSED,p);
+
+	    315)
+	    	int 
+			wait2(int *wtime, int *rtime, int *iotime)
+			{
+			struct proc *p;
+			  int havekids, pid;
+
 			  acquire(&ptable.lock);
-			     
-			  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+			  for(;;){
+			    // Scan through table looking for zombie children.
+			    havekids = 0;
+			    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+			      if(p->parent != proc)
+			        continue;
+			      havekids = 1;
+			      if(p->state == ZOMBIE){
+			        // Found one.
+			        pid = p->pid;
+			        kfree(p->kstack);
+			        p->kstack = 0;
+			        freevm(p->pgdir);
+			        changeStatus(UNUSED,p);
+			        p->pid = 0;
+			        p->parent = 0;
+			        p->name[0] = 0;
+			        p->killed = 0;
+			        *wtime=p->etime-p->ctime-p->rtime-p->iotime;
+			        *rtime=p->rtime;
+			        *iotime=p->iotime;
 			        
-			            if(p->state == SLEEPING){
-			              p->iotime++;
-			              
-			            }
-			            if(p->state == RUNNING){
-			              p->rtime++;
-			              p->quanta--;
-			              
-			            }
-			          
-			        }
-			 release(&ptable.lock);
+			        release(&ptable.lock);
+			        return pid;
+			      }
+			    }
+
+			    // No point waiting if we don't have any children.
+			    if(!havekids || proc->killed){
+			      release(&ptable.lock);
+			      return -1;
+			    }
+
+			    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+			    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+			  }
+			}
+		 
+
+		 409) changeStatus(RUNNING,p);	
+
+		 449) changeStatus(RUNNABLE,proc);
+		 498) changeStatus(SLEEPING,proc);
+
+		589)
+			cprintf("id:%d status:%s name:%s\n", p->pid, state, p->name);
+	   			 cprintf("ctime:%d rtime:%d iotime:%d etime:%d\n", p->ctime, p->rtime, p->iotime,p->etime);
+	      	  cprintf("quanta is:%d\n", p->quanta);
+
+
+	sysproc.c:
+
+		106)
+			int
+				sys_wait2(void)
+				{
+				  int wtime;
+				  int rtime;
+				  int iotime;
+				  if(argint(0, &wtime) < 0){
+				      return -1;
+				    }
+				    if(argint(1, &rtime) < 0){
+				      return -1;
+				    }
+				    if(argint(2, &iotime) < 0){
+				      return -1;
+				    }
+				return wait2((int *)wtime,(int *)rtime,(int *)iotime);
+
+				}
+	defs.h:
+		
+		120) 
+				int 			wait2(int*, int*, int*);
+				void			sleepingUpDate(); 
+
+
+	syscall.c:
+		102) 
+			extern int sys_wait2(void);
+		127) 
+			[SYS_wait2]    sys_wait2
+
+	syscall.h:
+		25) 
+			#define SYS_wait2  23
+
+	usys.S:
+		33)
+			SYSCALL(wait2)
+
+	user.h:
+		26)	
+			int wait2(int*, int*, int*);
+
+	trap.c:  56)  sleepingUpDate();
+		 110)  
+		 		if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER && proc->quanta==0)
+    				yield();
+			
+Task3 :
+	Makefile:
+		54)
+			#adding the flag for scheduling policy
+			ifndef SCHEDFLAG
+				SCHEDFLAG = DEFAULT
+			endif
+		84)
+			CFLAGS += -D SCHEDFLAG=SCHED_$(SCHEDFLAG)
+
+	param.h:
+		18)
+			#define SCHED_DEFAULT  			1// default scheduling policy
+			#define SCHED_FRR				2//FIFO round robin scheduling policy
+			#define SCHED_FCFS				3//FIFO round robin infinte time QUANTA
+			#define SCHED_3Q				4//three priority queues scheduling policy
+	proc.c:
+		22) static int pidQueue[NUMBER_OF_QUEUES*NPROC]={-1};
+			static int queueCurrent[NUMBER_OF_QUEUES]={0};
+			static int queueEnd[NUMBER_OF_QUEUES]={0};
+		77)
+			int
+			findIndxOfProc(struct proc* np){
+			  int i;
+			  for(i=0; i <= NPROC; i++)
+			  {
+			    if((&ptable.proc[i])->pid == np->pid){
+			      break;   
+			    }
+			  }
+			 if(i>NPROC)
+			  i=-1;
+			 return i;
+			}
+			int
+			queuesAboveEmpty(int queue){
+			  int ans = 1;
+			  int placer;
+			  if(queue==NUMBER_OF_QUEUES-1)
+			    return 1;
+			  
+			  for(placer = (queue+1)*NPROC;placer<NUMBER_OF_QUEUES*NPROC;placer++)
+			  {
+			    ans = ans * (pidQueue[placer]==-1)? 1 : 0;
+			  }
+
+			  return ans;
 			}
 
 			void
 			changeStatus(enum procstate s,struct proc* p)
 			{
+			  int location = findIndxOfProc(p);
+			  enum procstate prevState = p->state; 
+
 			  p->state=s;
-			  if(s==RUNNABLE){}
-			    //////////////////////// add to queue //////////////////
-			    if(s==RUNNING)
-			      p->quanta=QUANTA;
+
+			  if(location<0)
+			    cprintf("Cant find any processes with pid %d\n",p->pid);
+			  
+			    switch(SCHEDFLAG){
+			      case SCHED_3Q:
+
+			        if(s==RUNNABLE)
+			        {
+			          if(p->quanta==0)  //process was forced to yield last run
+			          {
+			            p->queue = (p->queue==0)? 0 : (p->queue-1);
+			          }
+			          if(prevState==SLEEPING){
+			           p->queue= (p->queue==(NUMBER_OF_QUEUES-1))? (NUMBER_OF_QUEUES-1) : (p->queue+1); 
+			          }
+			          pidQueue[queueEnd[p->queue]]=location;
+			          p->placeInQueue=queueEnd[p->queue];
+			          queueEnd[p->queue]++;
+			        }
+			        if(s==RUNNING){
+			          pidQueue[p->placeInQueue]=-1;
+			          p->placeInQueue=-1;
+			          p->quanta=(p->queue==0)? -1 : QUANTA; //lowest queue works without preempting
+			        }
+			        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
+			          pidQueue[p->placeInQueue]=-1;
+			          p->placeInQueue=-1;
+			        }
+			      break;
+
+			      case SCHED_FCFS:
+			      case SCHED_FRR:
+			        if(s==RUNNABLE)
+			        {
+			          pidQueue[queueEnd[p->queue]]=location;
+			          p->placeInQueue=queueEnd[p->queue];
+			          queueEnd[p->queue]++;
+			        }
+			        if(s==RUNNING){
+			          pidQueue[p->placeInQueue]=-1;
+			          p->placeInQueue=-1;
+			          if(SCHEDFLAG==SCHED_FRR)
+			            p->quanta=QUANTA;
+			          else
+			            p->quanta=-1;
+			        }
+			        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
+			          pidQueue[p->placeInQueue]=-1;
+			          p->placeInQueue=-1;
+			        }
+			      break;
+			      default:
+			        if(s==RUNNING){
+			          p->quanta=QUANTA;
+			        }
+			      break;
+			    }
 			}
-
-
-	103)  changeStatus(EMBRYO,p);
-		
-
-	106)
-		//update time of creation
-  		p->ctime=get_time();
-  		p->iotime=0;
-  		p->rtime=0;
-
-
-  	115)  changeStatus(UNUSED,p);
-  	
-  	165) changeStatus(RUNNABLE,p);	
-
-  	205)  changeStatus(UNUSED,np);
-  	221) changeStatus(RUNNABLE,np);
-  	248)  proc->etime=get_time();
-	265) changeStatus(ZOMBIE,proc);
-
-	292) changeStatus(UNUSED,p);
-
-	
-
-
-    315)
-    	int 
-		wait2(int *wtime, int *rtime, int *iotime)
-		{
-		struct proc *p;
-		  int havekids, pid;
-
-		  acquire(&ptable.lock);
-		  for(;;){
-		    // Scan through table looking for zombie children.
-		    havekids = 0;
-		    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-		      if(p->parent != proc)
-		        continue;
-		      havekids = 1;
-		      if(p->state == ZOMBIE){
-		        // Found one.
-		        pid = p->pid;
-		        kfree(p->kstack);
-		        p->kstack = 0;
-		        freevm(p->pgdir);
-		        changeStatus(UNUSED,p);
-		        p->pid = 0;
-		        p->parent = 0;
-		        p->name[0] = 0;
-		        p->killed = 0;
-		        *wtime=p->etime-p->ctime-p->rtime-p->iotime;
-		        *rtime=p->rtime;
-		        *iotime=p->iotime;
-		        
-		        release(&ptable.lock);
-		        return pid;
-		      }
-		    }
-
-		    // No point waiting if we don't have any children.
-		    if(!havekids || proc->killed){
-		      release(&ptable.lock);
-		      return -1;
-		    }
-
-		    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-		    sleep(proc, &ptable.lock);  //DOC: wait-sleep
-		  }
-		}
-	 
-
-	 409) changeStatus(RUNNING,p);	
-
-	 449) changeStatus(RUNNABLE,proc);
-	 498) changeStatus(SLEEPING,proc);
-
-	589)
-		cprintf("id:%d status:%s name:%s\n", p->pid, state, p->name);
-   			 cprintf("ctime:%d rtime:%d iotime:%d etime:%d\n", p->ctime, p->rtime, p->iotime,p->etime);
-      	  cprintf("quanta is:%d\n", p->quanta);
-
-
-sysproc.c:
-
-	106)
-		int
-			sys_wait2(void)
+		518) almost everything in scheduler changed
+			void
+			scheduler(void)
 			{
-			  int wtime;
-			  int rtime;
-			  int iotime;
-			  if(argint(0, &wtime) < 0){
-			      return -1;
-			    }
-			    if(argint(1, &rtime) < 0){
-			      return -1;
-			    }
-			    if(argint(2, &iotime) < 0){
-			      return -1;
-			    }
-			return wait2((int *)wtime,(int *)rtime,(int *)iotime);
+			  struct proc *p;
+			  int workingQueue;
+			    //int i;
+			  for(;;){
+			    // Enable interrupts on this processor.
+			    sti();
 
+			    // Loop over process table looking for process to run.
+			    acquire(&ptable.lock);
+			    switch(SCHEDFLAG){
+			      case SCHED_3Q:
+			        for(workingQueue=NUMBER_OF_QUEUES-1;workingQueue>=0;workingQueue--){
+			          if(queuesAboveEmpty(workingQueue)){
+			            for(queueCurrent[workingQueue]=workingQueue*NPROC;
+			              queueCurrent[workingQueue]< queueEnd[workingQueue];
+			              queueCurrent[workingQueue]++)
+			            {
+
+			              if(pidQueue[queueCurrent[workingQueue]]!=-1&&
+			                 ptable.proc[pidQueue[queueCurrent[workingQueue]]].pid!=0&&
+			                 queuesAboveEmpty(workingQueue))
+			              {
+			                proc = &ptable.proc[pidQueue[queueCurrent[workingQueue]]];
+			                operateProcess(proc);
+			              }
+			            }
+			          }
+			          fixQueue(workingQueue);
+			        }
+			      break;
+
+			      case SCHED_FCFS:
+			      case SCHED_FRR:
+
+			        for(queueCurrent[NORMAL_PRIORITY_QUEUE]=NORMAL_PRIORITY_QUEUE*NPROC;
+			          queueCurrent[NORMAL_PRIORITY_QUEUE]< queueEnd[NORMAL_PRIORITY_QUEUE];
+			          queueCurrent[NORMAL_PRIORITY_QUEUE]++)
+			        {
+
+			          if(pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]!=-1)
+			            if(ptable.proc[pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]].pid!=0){
+
+			            proc = &ptable.proc[pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]];
+			            operateProcess(proc);
+			          }
+			        }
+			        fixQueue(NORMAL_PRIORITY_QUEUE);
+			    break;
+			      
+			    default:
+			      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+			        if(p->state != RUNNABLE)
+			          continue;
+			      
+			        // Switch to chosen process.  It is the process's job
+			        // to release ptable.lock and then reacquire it
+			        // before jumping back to us.
+			        operateProcess(proc);
+			      }
+			    break;
+			    }
+			        release(&ptable.lock);
+			  }
+			  
 			}
-defs.h:
-	
-	120) 
-			int 			wait2(int*, int*, int*);
-			void			sleepingUpDate(); 
-
-
-syscall.c:
-	102) 
-		extern int sys_wait2(void);
-	127) 
-		[SYS_wait2]    sys_wait2
-
-syscall.h:
-	25) 
-		#define SYS_wait2  23
-
-usys.S:
-	33)
-		SYSCALL(wait2)
-
-user.h:
-	26)	
-		int wait2(int*, int*, int*);
-
-trap.c:  56)  sleepingUpDate();
-		 110)  
-		 		if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER && proc->quanta<=0)
-    				yield();
-			
-Task3 :
-		trap.c line 24 arg2 was change from 1 to QUANTA
+		

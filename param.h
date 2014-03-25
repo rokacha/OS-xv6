@@ -15,7 +15,7 @@
 #define QUANTA					5// the number of ticks in one run
 #define NUMBER_OF_QUEUES    	3//the number of queues
 #define NORMAL_PRIORITY_QUEUE	1//the middle queue's number
-#define DEFAULT       			1// default scheduling policy
-#define FRR						2//FIFO round robin scheduling policy
-#define FCFS					3//FIFO round robin infinte time QUANTA
-#define THREEQ					4//three priority queues scheduling policy
+#define SCHED_DEFAULT  			1// default scheduling policy
+#define SCHED_FRR				2//FIFO round robin scheduling policy
+#define SCHED_FCFS				3//FIFO round robin infinte time QUANTA
+#define SCHED_3Q				4//three priority queues scheduling policy

@@ -1,5 +1,5 @@
 #ifndef SCHEDFLAG
-  SCHEDFLAG=DEFAULT_SCHED
+  SCHEDFLAG=SCHED_DEFAULT
 #endif
 
 #include "types.h"
@@ -133,13 +133,13 @@ changeStatus(enum procstate s,struct proc* p)
     cprintf("Cant find any processes with pid %d\n",p->pid);
   
     switch(SCHEDFLAG){
-      case THREEQ:
+      case SCHED_3Q:
 
         if(s==RUNNABLE)
         {
           if(p->quanta==0)  //process was forced to yield last run
           {
-            p->queue= (p->queue==0)? 0 : (p->queue-1);
+            p->queue = (p->queue==0)? 0 : (p->queue-1);
           }
           if(prevState==SLEEPING){
            p->queue= (p->queue==(NUMBER_OF_QUEUES-1))? (NUMBER_OF_QUEUES-1) : (p->queue+1); 
@@ -150,17 +150,17 @@ changeStatus(enum procstate s,struct proc* p)
         }
         if(s==RUNNING){
           pidQueue[p->placeInQueue]=-1;
-          p->placeInQueue=0;
-          p->quanta=(p->queue==0)? -1 : QUANTA;
+          p->placeInQueue=-1;
+          p->quanta=(p->queue==0)? -1 : QUANTA; //lowest queue works without preempting
         }
         if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
           pidQueue[p->placeInQueue]=-1;
-          p->placeInQueue=0;
+          p->placeInQueue=-1;
         }
       break;
 
-      case FCFS:
-      case FRR:
+      case SCHED_FCFS:
+      case SCHED_FRR:
         if(s==RUNNABLE)
         {
           pidQueue[queueEnd[p->queue]]=location;
@@ -169,15 +169,15 @@ changeStatus(enum procstate s,struct proc* p)
         }
         if(s==RUNNING){
           pidQueue[p->placeInQueue]=-1;
-          p->placeInQueue=0;
-          if(SCHEDFLAG==FRR)
+          p->placeInQueue=-1;
+          if(SCHEDFLAG==SCHED_FRR)
             p->quanta=QUANTA;
           else
             p->quanta=-1;
         }
         if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
           pidQueue[p->placeInQueue]=-1;
-          p->placeInQueue=0;
+          p->placeInQueue=-1;
         }
       break;
       default:
@@ -211,6 +211,7 @@ allocproc(void)
 found:
 
   p->queue=NORMAL_PRIORITY_QUEUE;
+  p->placeInQueue=-1;
   
   changeStatus(EMBRYO,p);
 
@@ -527,7 +528,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     switch(SCHEDFLAG){
-      case THREEQ:
+      case SCHED_3Q:
         for(workingQueue=NUMBER_OF_QUEUES-1;workingQueue>=0;workingQueue--){
           if(queuesAboveEmpty(workingQueue)){
             for(queueCurrent[workingQueue]=workingQueue*NPROC;
@@ -548,12 +549,8 @@ scheduler(void)
         }
       break;
 
-      case FCFS:
-      case FRR:
-
-        // for(i=NORMAL_PRIORITY_QUEUE*NPROC;i<NORMAL_PRIORITY_QUEUE*NPROC+NPROC/3;i++)
-        //   cprintf("%d ",pidQueue[i]);
-        // cprintf("\n");
+      case SCHED_FCFS:
+      case SCHED_FRR:
 
         for(queueCurrent[NORMAL_PRIORITY_QUEUE]=NORMAL_PRIORITY_QUEUE*NPROC;
           queueCurrent[NORMAL_PRIORITY_QUEUE]< queueEnd[NORMAL_PRIORITY_QUEUE];
@@ -585,8 +582,6 @@ scheduler(void)
         release(&ptable.lock);
   }
   
-
-
 }
 
 
