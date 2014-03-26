@@ -77,15 +77,13 @@ sleepingUpDate(void)
 int
 findIndxOfProc(struct proc* np){
   int i;
-  for(i=0; i <= NPROC; i++)
+  for(i=0; i < NPROC; i++)
   {
     if((&ptable.proc[i])->pid == np->pid){
-      break;   
+      return i;   
     }
   }
- if(i>NPROC)
-  i=-1;
- return i;
+ return -1;
 }
 
 void
@@ -124,7 +122,9 @@ queuesAboveEmpty(int queue){
 void
 changeStatus(enum procstate s,struct proc* p)
 {
+  
   int location = findIndxOfProc(p);
+  
   enum procstate prevState = p->state; 
 
   p->state=s;
@@ -211,7 +211,7 @@ allocproc(void)
 found:
 
   p->queue=NORMAL_PRIORITY_QUEUE;
-  p->placeInQueue=-1;
+  
   
   changeStatus(EMBRYO,p);
 
@@ -497,8 +497,7 @@ register_handler(sighandler_t sighandler)
 
 
 void
-operateProcess(struct proc*p){
-  p = proc;
+operateProcess(struct proc *p){
   switchuvm(p);
   changeStatus(RUNNING,p);
   swtch(&cpu->scheduler, proc->context);
@@ -575,6 +574,7 @@ scheduler(void)
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
+        proc = p;
         operateProcess(proc);
       }
     break;
