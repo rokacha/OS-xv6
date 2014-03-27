@@ -119,6 +119,8 @@ void            wakeup(void*);
 void            yield(void);
 int 			wait2(int*, int*, int*);
 void			sleepingUpDate(); 
+int 			getquanta();
+int 			getqueue();
 
 // swtch.S
 void            swtch(struct context**, struct context*);

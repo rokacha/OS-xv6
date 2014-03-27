@@ -23,3 +23,5 @@
 #define SYS_close  21
 #define SYS_add_path  22
 #define SYS_wait2  23
+#define SYS_getquanta  24
+#define SYS_getqueue  25

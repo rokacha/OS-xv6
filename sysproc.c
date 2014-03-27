@@ -121,3 +121,17 @@ sys_wait2(void)
 return wait2((int *)wtime,(int *)rtime,(int *)iotime);
 
 }
+int
+sys_getquanta(void)
+{
+  
+return getquanta();
+
+}
+int
+sys_getqueue(void)
+{
+  
+return getqueue();
+
+}

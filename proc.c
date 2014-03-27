@@ -189,6 +189,22 @@ changeStatus(enum procstate s,struct proc* p)
 }
 
 
+
+
+
+int 
+getquanta()
+{
+  return proc->quanta;
+}
+int 
+getqueue()
+{
+  return proc->queue;
+}
+
+
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize

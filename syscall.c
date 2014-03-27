@@ -100,6 +100,9 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_add_path(void);
 extern int sys_wait2(void);
+extern int sys_getquanta(void);
+extern int sys_getqueue(void);
+
 
 
 static int (*syscalls[])(void) = {
@@ -125,7 +128,9 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_add_path] sys_add_path,
-[SYS_wait2]    sys_wait2
+[SYS_wait2]    sys_wait2,
+[SYS_getquanta]  sys_getquanta,
+[SYS_getqueue]  sys_getqueue
 };
 
 void
