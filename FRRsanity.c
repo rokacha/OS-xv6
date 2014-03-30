@@ -15,6 +15,10 @@ main(int argc, char *argv[])
       k=fork();
     
     }
+    if(k==0)
+    {
+      break;
+    }
   }
 if(k==0)
 {
