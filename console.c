@@ -233,7 +233,7 @@ void
 consoleintr(int (*getc)(void))
 {
   int c;
-  
+  int i;
   acquire(&input.lock);
   while((c = getc()) >= 0){
     switch(c){
@@ -253,9 +253,36 @@ consoleintr(int (*getc)(void))
     case C('H'):    case '\x7f':  // Backspace
       if(input.e != input.w)
       {
-        input.e--;
-        input.last--;
-        consputc(BACKSPACE);
+        if(input.e<input.last){
+          for (i =input.e;  i <= input.last;i++)
+          {
+            input.buf[(i-1)%INPUT_BUF]=input.buf[i%INPUT_BUF];
+          }
+          for (i = input.e; i < input.last; ++i)
+          {
+            consputc(KEY_RT);
+          }
+          for (i = input.e; i <= input.last; ++i)
+          {
+            consputc(BACKSPACE);
+          }
+          input.e--;
+          input.last--;
+          for (i = input.e; i < input.last; ++i)
+          {
+            consputc(input.buf[i%INPUT_BUF]);
+          }
+          for (i = input.e; i < input.last; ++i)
+          {
+            consputc(KEY_LF);
+          }
+
+        }
+        else{
+          input.e--;
+          input.last--;
+          consputc(BACKSPACE);
+        }
       }
       break;
 
@@ -296,11 +323,36 @@ consoleintr(int (*getc)(void))
       break;
 
     default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
+      if(c != 0 && input.e-input.r < INPUT_BUF)
+      {
         c = (c == '\r') ? '\n' : c;
-        input.buf[input.e++ % INPUT_BUF] = c;
-        input.last++;
-        consputc(c);  
+        if(input.e<input.last && c!='\n')
+        {
+          for (i = input.last; i >= input.e; i--)
+          {
+            input.buf[(i + 1)% INPUT_BUF]=input.buf[i% INPUT_BUF];
+          }
+          input.buf[input.e % INPUT_BUF] = c;
+          input.last++;
+          input.e++;
+          for (i =input.e-1 ; i <input.last ; i++)
+          {
+            consputc(input.buf[i%INPUT_BUF]);
+          }
+          for(i=0;i<(input.last-input.e);i++)
+          {
+            consputc(KEY_LF);
+          }
+        }
+        else
+        {
+          if(c=='\n'){
+            input.e=input.last;
+          }
+          input.buf[input.e++ % INPUT_BUF] = c;
+          input.last++;
+          consputc(c);
+        }
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF)
         {
           strncpy(input.history[input.history_end % MAX_HISTORY_LENGTH]

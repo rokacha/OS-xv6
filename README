@@ -107,9 +107,38 @@ Extension 2
 		}
 	248)
 		input.last--;
-	257)
-		input.last--;
-	262)
+	256)
+		 if(input.e<input.last){
+          for (i =input.e;  i <= input.last;i++)
+          {
+            input.buf[(i-1)%INPUT_BUF]=input.buf[i%INPUT_BUF];
+          }
+          for (i = input.e; i < input.last; ++i)
+          {
+            consputc(KEY_RT);
+          }
+          for (i = input.e; i <= input.last; ++i)
+          {
+            consputc(BACKSPACE);
+          }
+          input.e--;
+          input.last--;
+          for (i = input.e; i < input.last; ++i)
+          {
+            consputc(input.buf[i%INPUT_BUF]);
+          }
+          for (i = input.e; i < input.last; ++i)
+          {
+            consputc(KEY_LF);
+          }
+
+        }
+        else{
+          input.e--;
+          input.last--;
+          consputc(BACKSPACE);
+        }
+	289)
 	    case KEY_LF:  // left arrow
 	    if(input.e != input.w)
 	    {
@@ -145,9 +174,35 @@ Extension 2
 	      replace_line_on_screen();
 	    }
 	    break;
-	302)
-		input.last++;
-	306)
+	329)
+		if(input.e<input.last && c!='\n')
+        {
+          for (i = input.last; i >= input.e; i--)
+          {
+            input.buf[(i + 1)% INPUT_BUF]=input.buf[i% INPUT_BUF];
+          }
+          input.buf[input.e % INPUT_BUF] = c;
+          input.last++;
+          input.e++;
+          for (i =input.e-1 ; i <input.last ; i++)
+          {
+            consputc(input.buf[i%INPUT_BUF]);
+          }
+          for(i=0;i<(input.last-input.e);i++)
+          {
+            consputc(KEY_LF);
+          }
+        }
+        else
+        {
+          if(c=='\n'){
+            input.e=input.last;
+          }
+          input.buf[input.e++ % INPUT_BUF] = c;
+          input.last++;
+          consputc(c);
+        }
+	358)
 	    strncpy(input.history[input.history_end % MAX_HISTORY_LENGTH]
 	      ,&input.buf[input.w% INPUT_BUF]
 	      ,input.last-input.w-1);
@@ -211,7 +266,7 @@ Task 2
 				{
 				  p->state=s;
 				  if(s==RUNNABLE){}
-				    //////////////////////// add to queue //////////////////
+				    
 				    if(s==RUNNING)
 				      p->quanta=QUANTA;
 				}
@@ -358,29 +413,41 @@ Task3 :
 			CFLAGS += -D SCHEDFLAG=SCHED_$(SCHEDFLAG)
 
 	param.h:
-		18)
+		16)
+			#define NUMBER_OF_QUEUES    	3//the number of queues
+			#define NORMAL_PRIORITY_QUEUE	1//the middle queue's number
 			#define SCHED_DEFAULT  			1// default scheduling policy
 			#define SCHED_FRR				2//FIFO round robin scheduling policy
 			#define SCHED_FCFS				3//FIFO round robin infinte time QUANTA
 			#define SCHED_3Q				4//three priority queues scheduling policy
 	proc.c:
-		22) static int pidQueue[NUMBER_OF_QUEUES*NPROC]={-1};
-			static int queueCurrent[NUMBER_OF_QUEUES]={0};
-			static int queueEnd[NUMBER_OF_QUEUES]={0};
-		77)
+		22) struct{
+				struct spinlock lock;
+				int list[NUMBER_OF_QUEUES*NPROC];
+				int start[NUMBER_OF_QUEUES];
+				int end[NUMBER_OF_QUEUES];  
+			} queues;
+		64)
+			initlock(&queues.lock, "queue");
+		  	for(i=0;i<NUMBER_OF_QUEUES*NPROC;i++)
+			    queues.list[i]=-1;
+		    for(i=0;i<NUMBER_OF_QUEUES;i++){
+		  		queues.start[i]=0;
+		  		queues.end[i]=0;
+		  	}
+		92)
 			int
 			findIndxOfProc(struct proc* np){
 			  int i;
-			  for(i=0; i <= NPROC; i++)
+			  for(i=0; i < NPROC; i++)
 			  {
 			    if((&ptable.proc[i])->pid == np->pid){
-			      break;   
+			      return i;   
 			    }
 			  }
-			 if(i>NPROC)
-			  i=-1;
-			 return i;
+			 return -1;
 			}
+
 			int
 			queuesAboveEmpty(int queue){
 			  int ans = 1;
@@ -390,7 +457,7 @@ Task3 :
 			  
 			  for(placer = (queue+1)*NPROC;placer<NUMBER_OF_QUEUES*NPROC;placer++)
 			  {
-			    ans = ans * (pidQueue[placer]==-1)? 1 : 0;
+			    ans = ans * (queues.list[placer]==-1)? 1 : 0;
 			  }
 
 			  return ans;
@@ -399,8 +466,10 @@ Task3 :
 			void
 			changeStatus(enum procstate s,struct proc* p)
 			{
+			  
 			  int location = findIndxOfProc(p);
-			  enum procstate prevState = p->state; 
+			  
+			 enum procstate prevState = p->state; 
 
 			  p->state=s;
 
@@ -408,29 +477,33 @@ Task3 :
 			    cprintf("Cant find any processes with pid %d\n",p->pid);
 			  
 			    switch(SCHEDFLAG){
-			      case SCHED_3Q:
 
+			      case SCHED_3Q:
 			        if(s==RUNNABLE)
 			        {
 			          if(p->quanta==0)  //process was forced to yield last run
 			          {
 			            p->queue = (p->queue==0)? 0 : (p->queue-1);
 			          }
-			          if(prevState==SLEEPING){
+			          if(prevState==SLEEPING)
+			          {
 			           p->queue= (p->queue==(NUMBER_OF_QUEUES-1))? (NUMBER_OF_QUEUES-1) : (p->queue+1); 
 			          }
-			          pidQueue[queueEnd[p->queue]]=location;
-			          p->placeInQueue=queueEnd[p->queue];
-			          queueEnd[p->queue]++;
+			          queues.list[queues.end[p->queue]%NPROC+(p->queue)*NPROC]=location;
+			          p->placeInQueue=queues.end[p->queue]%NPROC;
+			          queues.end[p->queue]++;
 			        }
-			        if(s==RUNNING){
-			          pidQueue[p->placeInQueue]=-1;
+			        if(s==UNUSED || s==ZOMBIE || s==SLEEPING || s==RUNNING){
+			          queues.list[ p->placeInQueue+NPROC * (p->queue)]=-1;
 			          p->placeInQueue=-1;
-			          p->quanta=(p->queue==0)? -1 : QUANTA; //lowest queue works without preempting
-			        }
-			        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
-			          pidQueue[p->placeInQueue]=-1;
-			          p->placeInQueue=-1;
+			          if(ptable.proc[queues.list[queues.start[p->queue]]].pid == p->pid)
+			          {
+			            queues.start[p->queue]++;
+			          }
+			          if(s==RUNNING)
+			          {
+			            p->quanta=(p->queue==0)? -1 : QUANTA; //lowest queue works without preempting
+			          }
 			        }
 			      break;
 
@@ -438,23 +511,25 @@ Task3 :
 			      case SCHED_FRR:
 			        if(s==RUNNABLE)
 			        {
-			          pidQueue[queueEnd[p->queue]]=location;
-			          p->placeInQueue=queueEnd[p->queue];
-			          queueEnd[p->queue]++;
+			          queues.list[queues.end[p->queue]%NPROC+(p->queue)*NPROC]=location;
+			          p->placeInQueue=queues.end[p->queue]%NPROC;
+			          queues.end[p->queue]++;
 			        }
-			        if(s==RUNNING){
-			          pidQueue[p->placeInQueue]=-1;
+			        if(s==UNUSED || s==ZOMBIE || s==SLEEPING || s==RUNNING)
+			        {
+			          queues.list[ p->placeInQueue+NPROC * (p->queue)]=-1;
 			          p->placeInQueue=-1;
-			          if(SCHEDFLAG==SCHED_FRR)
-			            p->quanta=QUANTA;
-			          else
-			            p->quanta=-1;
-			        }
-			        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
-			          pidQueue[p->placeInQueue]=-1;
-			          p->placeInQueue=-1;
+			          if(ptable.proc[queues.list[queues.start[ p->queue ]]].pid==p->pid)
+			          {
+			            queues.start[p->queue]++;
+			          }
+			          if(s==RUNNING)
+			          {
+			            p->quanta=(SCHEDFLAG==SCHED_FRR)? QUANTA : -1;
+			          } 
 			        }
 			      break;
+
 			      default:
 			        if(s==RUNNING){
 			          p->quanta=QUANTA;
@@ -462,13 +537,15 @@ Task3 :
 			      break;
 			    }
 			}
-		518) almost everything in scheduler changed
-			void
+		215)
+			p->queue=NORMAL_PRIORITY_QUEUE;
+
+		518)void
 			scheduler(void)
 			{
 			  struct proc *p;
+			  int current;
 			  int workingQueue;
-			    //int i;
 			  for(;;){
 			    // Enable interrupts on this processor.
 			    sti();
@@ -477,55 +554,49 @@ Task3 :
 			    acquire(&ptable.lock);
 			    switch(SCHEDFLAG){
 			      case SCHED_3Q:
-			        for(workingQueue=NUMBER_OF_QUEUES-1;workingQueue>=0;workingQueue--){
+			        for(workingQueue=NUMBER_OF_QUEUES-1; workingQueue>=0 ; workingQueue--){
 			          if(queuesAboveEmpty(workingQueue)){
-			            for(queueCurrent[workingQueue]=workingQueue*NPROC;
-			              queueCurrent[workingQueue]< queueEnd[workingQueue];
-			              queueCurrent[workingQueue]++)
+			            for(current=queues.start[workingQueue];
+			              current< queues.end[workingQueue];
+			              current++)
 			            {
 
-			              if(pidQueue[queueCurrent[workingQueue]]!=-1&&
-			                 ptable.proc[pidQueue[queueCurrent[workingQueue]]].pid!=0&&
-			                 queuesAboveEmpty(workingQueue))
+			              if((queues.list[workingQueue*NPROC+current%NPROC]>=0) 
+			                && queuesAboveEmpty(workingQueue))
 			              {
-			                proc = &ptable.proc[pidQueue[queueCurrent[workingQueue]]];
+			                proc = &ptable.proc[queues.list[workingQueue*NPROC+current%NPROC]];
 			                operateProcess(proc);
 			              }
 			            }
 			          }
-			          fixQueue(workingQueue);
 			        }
 			      break;
 
 			      case SCHED_FCFS:
 			      case SCHED_FRR:
-
-			        for(queueCurrent[NORMAL_PRIORITY_QUEUE]=NORMAL_PRIORITY_QUEUE*NPROC;
-			          queueCurrent[NORMAL_PRIORITY_QUEUE]< queueEnd[NORMAL_PRIORITY_QUEUE];
-			          queueCurrent[NORMAL_PRIORITY_QUEUE]++)
+			        for(current=queues.start[NORMAL_PRIORITY_QUEUE];
+			          current<= queues.end[NORMAL_PRIORITY_QUEUE];
+			          current++)
 			        {
-
-			          if(pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]!=-1)
-			            if(ptable.proc[pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]].pid!=0){
-
-			            proc = &ptable.proc[pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]];
+			          if(queues.list[NORMAL_PRIORITY_QUEUE*NPROC+current%NPROC]>=0){
+			            proc = &ptable.proc[queues.list[NORMAL_PRIORITY_QUEUE*NPROC+current%NPROC]];
 			            operateProcess(proc);
 			          }
 			        }
-			        fixQueue(NORMAL_PRIORITY_QUEUE);
-			    break;
-			      
-			    default:
-			      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-			        if(p->state != RUNNABLE)
-			          continue;
-			      
-			        // Switch to chosen process.  It is the process's job
-			        // to release ptable.lock and then reacquire it
-			        // before jumping back to us.
-			        operateProcess(proc);
-			      }
-			    break;
+			      break;
+			        
+			      default:
+			        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+			          if(p->state != RUNNABLE)
+			            continue;
+			        
+			          // Switch to chosen process.  It is the process's job
+			          // to release ptable.lock and then reacquire it
+			          // before jumping back to us.
+			          proc = p;
+			          operateProcess(proc);
+			        }
+			      break;
 			    }
 			        release(&ptable.lock);
 			  }

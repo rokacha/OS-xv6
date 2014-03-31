@@ -19,9 +19,13 @@ struct {
 
 static struct proc *initproc;
 
-static int pidQueue[NUMBER_OF_QUEUES*NPROC]={-1};
-static int queueCurrent[NUMBER_OF_QUEUES]={0};
-static int queueEnd[NUMBER_OF_QUEUES]={0};
+struct{
+  struct spinlock lock;
+   int list[NUMBER_OF_QUEUES*NPROC];
+   int start[NUMBER_OF_QUEUES];
+   int end[NUMBER_OF_QUEUES];  
+} queues;
+
 
 int nextpid = 1;
 extern void forkret(void);
@@ -40,21 +44,31 @@ get_time(){
 return rticks;
 }
 
+int 
+getquanta()
+{
+  return proc->quanta;
+}
+int 
+getqueue()
+{
+  return proc->queue;
+}
+
 
 void
 pinit(void)
 {
   int i;
   initlock(&ptable.lock, "ptable");
+  initlock(&queues.lock, "queue");
   for(i=0;i<NUMBER_OF_QUEUES*NPROC;i++)
-    pidQueue[i]=-1;
+    queues.list[i]=-1;
   for(i=0;i<NUMBER_OF_QUEUES;i++){
-  queueCurrent[i]=i*NPROC;
-  queueEnd[i]=i*NPROC;
+  queues.start[i]=0;
+  queues.end[i]=0;
+  }
 }
-
-}
-
 
 void
 sleepingUpDate(void)
@@ -86,24 +100,6 @@ findIndxOfProc(struct proc* np){
  return -1;
 }
 
-void
-fixQueue(int queue){
-  int i;
-  
-  for(i=queue*NPROC;i<queueEnd[queue];i++)
-  {
-    if(pidQueue[i]==-1){
-       pidQueue[i]=pidQueue[i+1];
-       pidQueue[i+1]=-1;
-    }
-  }
-  while(queueEnd[queue]>queue*NPROC && pidQueue[queueEnd[queue]-1]==-1){  
-    queueEnd[queue]--;
-    if(queueCurrent[queue]>queueEnd[queue])
-      queueCurrent[queue]--;
-  }
-}
-
 int
 queuesAboveEmpty(int queue){
   int ans = 1;
@@ -113,7 +109,7 @@ queuesAboveEmpty(int queue){
   
   for(placer = (queue+1)*NPROC;placer<NUMBER_OF_QUEUES*NPROC;placer++)
   {
-    ans = ans * (pidQueue[placer]==-1)? 1 : 0;
+    ans = ans * (queues.list[placer]==-1)? 1 : 0;
   }
 
   return ans;
@@ -125,7 +121,7 @@ changeStatus(enum procstate s,struct proc* p)
   
   int location = findIndxOfProc(p);
   
-  enum procstate prevState = p->state; 
+ enum procstate prevState = p->state; 
 
   p->state=s;
 
@@ -133,29 +129,33 @@ changeStatus(enum procstate s,struct proc* p)
     cprintf("Cant find any processes with pid %d\n",p->pid);
   
     switch(SCHEDFLAG){
-      case SCHED_3Q:
 
+      case SCHED_3Q:
         if(s==RUNNABLE)
         {
           if(p->quanta==0)  //process was forced to yield last run
           {
             p->queue = (p->queue==0)? 0 : (p->queue-1);
           }
-          if(prevState==SLEEPING){
+          if(prevState==SLEEPING)
+          {
            p->queue= (p->queue==(NUMBER_OF_QUEUES-1))? (NUMBER_OF_QUEUES-1) : (p->queue+1); 
           }
-          pidQueue[queueEnd[p->queue]]=location;
-          p->placeInQueue=queueEnd[p->queue];
-          queueEnd[p->queue]++;
+          queues.list[queues.end[p->queue]%NPROC+(p->queue)*NPROC]=location;
+          p->placeInQueue=queues.end[p->queue]%NPROC;
+          queues.end[p->queue]++;
         }
-        if(s==RUNNING){
-          pidQueue[p->placeInQueue]=-1;
+        if(s==UNUSED || s==ZOMBIE || s==SLEEPING || s==RUNNING){
+          queues.list[ p->placeInQueue+NPROC * (p->queue)]=-1;
           p->placeInQueue=-1;
-          p->quanta=(p->queue==0)? -1 : QUANTA; //lowest queue works without preempting
-        }
-        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
-          pidQueue[p->placeInQueue]=-1;
-          p->placeInQueue=-1;
+          if(ptable.proc[queues.list[queues.start[p->queue]]].pid == p->pid)
+          {
+            queues.start[p->queue]++;
+          }
+          if(s==RUNNING)
+          {
+            p->quanta=(p->queue==0)? -1 : QUANTA; //lowest queue works without preempting
+          }
         }
       break;
 
@@ -163,23 +163,25 @@ changeStatus(enum procstate s,struct proc* p)
       case SCHED_FRR:
         if(s==RUNNABLE)
         {
-          pidQueue[queueEnd[p->queue]]=location;
-          p->placeInQueue=queueEnd[p->queue];
-          queueEnd[p->queue]++;
+          queues.list[queues.end[p->queue]%NPROC+(p->queue)*NPROC]=location;
+          p->placeInQueue=queues.end[p->queue]%NPROC;
+          queues.end[p->queue]++;
         }
-        if(s==RUNNING){
-          pidQueue[p->placeInQueue]=-1;
+        if(s==UNUSED || s==ZOMBIE || s==SLEEPING || s==RUNNING)
+        {
+          queues.list[ p->placeInQueue+NPROC * (p->queue)]=-1;
           p->placeInQueue=-1;
-          if(SCHEDFLAG==SCHED_FRR)
-            p->quanta=QUANTA;
-          else
-            p->quanta=-1;
-        }
-        if(s==UNUSED||s==ZOMBIE||s==SLEEPING){
-          pidQueue[p->placeInQueue]=-1;
-          p->placeInQueue=-1;
+          if(ptable.proc[queues.list[queues.start[ p->queue ]]].pid==p->pid)
+          {
+            queues.start[p->queue]++;
+          }
+          if(s==RUNNING)
+          {
+            p->quanta=(SCHEDFLAG==SCHED_FRR)? QUANTA : -1;
+          } 
         }
       break;
+
       default:
         if(s==RUNNING){
           p->quanta=QUANTA;
@@ -187,22 +189,6 @@ changeStatus(enum procstate s,struct proc* p)
       break;
     }
 }
-
-
-
-
-
-int 
-getquanta()
-{
-  return proc->quanta;
-}
-int 
-getqueue()
-{
-  return proc->queue;
-}
-
 
 
 //PAGEBREAK: 32
@@ -227,8 +213,7 @@ allocproc(void)
 found:
 
   p->queue=NORMAL_PRIORITY_QUEUE;
-  
-  
+    
   changeStatus(EMBRYO,p);
 
   p->pid = nextpid++;
@@ -534,8 +519,8 @@ void
 scheduler(void)
 {
   struct proc *p;
+  int current;
   int workingQueue;
-    //int i;
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -544,56 +529,49 @@ scheduler(void)
     acquire(&ptable.lock);
     switch(SCHEDFLAG){
       case SCHED_3Q:
-        for(workingQueue=NUMBER_OF_QUEUES-1;workingQueue>=0;workingQueue--){
+        for(workingQueue=NUMBER_OF_QUEUES-1; workingQueue>=0 ; workingQueue--){
           if(queuesAboveEmpty(workingQueue)){
-            for(queueCurrent[workingQueue]=workingQueue*NPROC;
-              queueCurrent[workingQueue]< queueEnd[workingQueue];
-              queueCurrent[workingQueue]++)
+            for(current=queues.start[workingQueue];
+              current< queues.end[workingQueue];
+              current++)
             {
 
-              if(pidQueue[queueCurrent[workingQueue]]!=-1&&
-                 ptable.proc[pidQueue[queueCurrent[workingQueue]]].pid!=0&&
-                 queuesAboveEmpty(workingQueue))
+              if((queues.list[workingQueue*NPROC+current%NPROC]>=0) 
+                && queuesAboveEmpty(workingQueue))
               {
-                proc = &ptable.proc[pidQueue[queueCurrent[workingQueue]]];
+                proc = &ptable.proc[queues.list[workingQueue*NPROC+current%NPROC]];
                 operateProcess(proc);
               }
             }
           }
-          fixQueue(workingQueue);
         }
       break;
 
       case SCHED_FCFS:
       case SCHED_FRR:
-
-        for(queueCurrent[NORMAL_PRIORITY_QUEUE]=NORMAL_PRIORITY_QUEUE*NPROC;
-          queueCurrent[NORMAL_PRIORITY_QUEUE]< queueEnd[NORMAL_PRIORITY_QUEUE];
-          queueCurrent[NORMAL_PRIORITY_QUEUE]++)
+        for(current=queues.start[NORMAL_PRIORITY_QUEUE];
+          current<= queues.end[NORMAL_PRIORITY_QUEUE];
+          current++)
         {
-
-          if(pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]!=-1)
-            if(ptable.proc[pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]].pid!=0){
-
-            proc = &ptable.proc[pidQueue[queueCurrent[NORMAL_PRIORITY_QUEUE]]];
+          if(queues.list[NORMAL_PRIORITY_QUEUE*NPROC+current%NPROC]>=0){
+            proc = &ptable.proc[queues.list[NORMAL_PRIORITY_QUEUE*NPROC+current%NPROC]];
             operateProcess(proc);
           }
         }
-        fixQueue(NORMAL_PRIORITY_QUEUE);
-    break;
-      
-    default:
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state != RUNNABLE)
-          continue;
-      
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        proc = p;
-        operateProcess(proc);
-      }
-    break;
+      break;
+        
+      default:
+        for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+          if(p->state != RUNNABLE)
+            continue;
+        
+          // Switch to chosen process.  It is the process's job
+          // to release ptable.lock and then reacquire it
+          // before jumping back to us.
+          proc = p;
+          operateProcess(proc);
+        }
+      break;
     }
         release(&ptable.lock);
   }
@@ -783,8 +761,8 @@ procdump(void)
     {
       cprintf("\n* Queue %d *",i/NPROC);  
     }
-    if(pidQueue[i]!=-1)
-      cprintf(" %d",pidQueue[i]);
+    if(queues.list[i]!=-1)
+      cprintf(" %d",queues.list[i]);
   }
   cprintf("\n");
   
