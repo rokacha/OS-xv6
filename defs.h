@@ -121,6 +121,7 @@ int 			wait2(int*, int*, int*);
 void			sleepingUpDate(); 
 int 			getquanta();
 int 			getqueue();
+int 			queuesAboveEmpty(int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
