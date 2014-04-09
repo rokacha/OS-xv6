@@ -161,7 +161,6 @@ mkfs: mkfs.c fs.h
 UPROGS=\
 	_cat\
 	_echo\
-	_forktest\
 	_grep\
 	_init\
 	_kill\
@@ -175,8 +174,6 @@ UPROGS=\
 	_mkdir\
 	_rm\
 	_sh\
-	_stressfs\
-	_usertests\
 	_wc\
 	_zombie\
 

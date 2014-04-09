@@ -52,8 +52,6 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-typedef void (*sighandler_t)(void);
-
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)

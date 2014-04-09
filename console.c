@@ -313,7 +313,7 @@ consoleintr(int (*getc)(void))
       break;
 
       case KEY_UP:  // up arrow
-
+      
       if((input.history_end % MAX_HISTORY_LENGTH) != (input.history_start % MAX_HISTORY_LENGTH)
        && ((input.history_indx) % MAX_HISTORY_LENGTH) != (input.history_start % MAX_HISTORY_LENGTH) )
       {
