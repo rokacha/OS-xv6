@@ -102,6 +102,9 @@ extern int sys_add_path(void);
 extern int sys_wait2(void);
 extern int sys_getquanta(void);
 extern int sys_getqueue(void);
+extern int sys_signal(void);
+extern int sys_sigsend(void);
+extern int sys_alarm(void);
 
 
 
@@ -130,7 +133,10 @@ static int (*syscalls[])(void) = {
 [SYS_add_path] sys_add_path,
 [SYS_wait2]    sys_wait2,
 [SYS_getquanta]  sys_getquanta,
-[SYS_getqueue]  sys_getqueue
+[SYS_getqueue]  sys_getqueue,
+[SYS_signal] sys_signal,
+[SYS_sigsend] sys_sigsend,
+[SYS_alarm] sys_alarm
 };
 
 void

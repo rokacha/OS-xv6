@@ -1,4 +1,5 @@
 struct stat;
+typedef void (*sighandler_t)(void);
 
 // system calls
 int fork(void);
@@ -26,6 +27,9 @@ int add_path(char*);
 int wait2(int*, int*, int*);
 int getquanta(void);
 int getqueue(void);
+int signal(int,sighandler_t);
+int sigsend(int,int);
+int alarm(int);
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);

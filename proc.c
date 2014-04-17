@@ -10,7 +10,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "signal.h"
+#include "signal.c"
 
 
 struct {
@@ -77,6 +77,7 @@ sleepingUpDate(void)
   struct proc *p;
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+
     if(p->state == SLEEPING){
       p->iotime++;
       
@@ -85,6 +86,17 @@ sleepingUpDate(void)
       p->rtime++;
       p->quanta--;
     }
+    if(p->alarm>=0)
+    {
+      p->alarm--;
+      if(p->alarm==0)
+      {
+        p->pending = p-> pending | (1 << (SIGALRM-1));
+        p->alarm=-1; 
+      }
+
+    }
+    
   }
  release(&ptable.lock);
 }
@@ -202,7 +214,8 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-  
+  int i;
+
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
@@ -223,6 +236,13 @@ found:
   p->ctime=get_time();
   p->iotime=0;
   p->rtime=0;
+  p->pending=0;
+  p->alarm=-1; //not set
+
+  for(i=0;i<NUMSIG;i++)
+  {
+    p->handlers[i]=(sighandler_t)&def_Handler;
+  }
 
   release(&ptable.lock);
 
@@ -328,6 +348,11 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
+
+  for (i =0 ; i<NUMSIG ; i++)
+  {
+    np->handlers[i]=proc->handlers[i];
+  }
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -500,6 +525,34 @@ register_handler(sighandler_t sighandler)
 
 void
 operateProcess(struct proc *p){
+  int i=0;
+  
+  int bit=1;
+  while(p->pending!=0)
+  {
+    if((p->pending & bit )>0)
+    {
+      if(p->handlers[i] == &def_Handler)
+      {
+	def_Handler();
+      }
+      else
+      {
+	register_handler(p->handlers[i]);
+      }
+      p->pending = (p->pending) & ~bit ;
+      
+      break;
+    }
+    bit = bit *2;
+    i++;
+    if(i>=NUMSIG)
+    {
+      bit=1;
+      i=0;
+    }
+  }
+  
   switchuvm(p);
   changeStatus(RUNNING,p);
   swtch(&cpu->scheduler, proc->context);
@@ -711,6 +764,27 @@ kill(int pid)
         changeStatus(RUNNABLE,p);
       }
       
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
+}
+
+int
+handle_sigsend(int pid, int signum)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+      
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if(p->pid == pid)
+    {
+      p->pending = p-> pending | (1 << (signum-1));
+
       release(&ptable.lock);
       return 0;
     }
