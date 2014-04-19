@@ -16,8 +16,8 @@ struct uthread {
   uthread_state	state;	/* running, runnable, sleeping */
 };
 
-//void uthread_init(void);
-int  uthread_create(void (*func)(void *), void* value);
+void uthread_init(void);
+int  uthread_create(void (*start_func)(void *), void* arg);
 void uthread_exit(void);
 void uthread_yield(void);
 int  uthred_self(void);
