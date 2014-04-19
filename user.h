@@ -1,5 +1,6 @@
 struct stat;
 typedef void (*sighandler_t)(void);
+#define SIGALRM	14
 
 // system calls
 int fork(void);
