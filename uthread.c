@@ -52,7 +52,7 @@ uthread_init()
   );
   /*moves stack to mainT's stack
   /stacks grow backwards so we start from esp and finsh at ebp*/
-  memmove(mainT->stack , mainT->esp , mainT->ebp - mainT->esp);
+  memmove(mainT->stack , (void*)mainT->esp , mainT->ebp - mainT->esp);
   mainT->state = T_RUNNABLE;
   
   if(signal(SIGALRM,uthread_yield)<0)
@@ -79,6 +79,7 @@ uthread_create(void (*start_func)(void *), void* arg)
       : "=r" (t->esp)
       : "r" (arg) , "r"(start_func)
   );
+  t->state= T_RUNNABLE;
   
   return t->tid;
 }
