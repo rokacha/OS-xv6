@@ -16,7 +16,16 @@ struct uthread {
   uthread_state	state;	/* running, runnable, sleeping */
 };
 
-struct binary_semaphore;
+struct binary_semaphore
+{
+  uint locked; 				//is the semaphore locked
+  int thread;				//the holding thread
+  uint init;
+  //synchronizing fields (using Lamport’s bakery algorithm)
+  uint choosing[MAX_THREAD];
+  int number[MAX_THREAD] ;
+  int maximalNum;
+};
 
 //uthred.c
 void uthread_init(void);

@@ -13,7 +13,6 @@ static struct {
 } tTable;
 
 
-
 static uthread_p
 allocThread()
 {
@@ -96,5 +95,8 @@ uthread_yield()
   //needs to be filled
 }
 
-// int  uthred_self(void);
+int  uthred_self(void)
+{
+  return 0;
+}
 // int  uthred_join(int tid);
