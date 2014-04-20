@@ -13,7 +13,6 @@
 #define SYS_sbrk   12
 #define SYS_sleep  13
 #define SYS_uptime 14
-
 #define SYS_open   15
 #define SYS_write  16
 #define SYS_mknod  17
@@ -25,3 +24,6 @@
 #define SYS_wait2  23
 #define SYS_getquanta  24
 #define SYS_getqueue  25
+#define SYS_signal  26
+#define SYS_sigsend  27
+#define SYS_alarm  28

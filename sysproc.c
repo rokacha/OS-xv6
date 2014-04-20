@@ -121,17 +121,88 @@ sys_wait2(void)
 return wait2((int *)wtime,(int *)rtime,(int *)iotime);
 
 }
+
 int
 sys_getquanta(void)
 {
-  
 return getquanta();
-
 }
+
 int
 sys_getqueue(void)
-{
-  
+{ 
 return getqueue();
-
 }
+
+int
+sys_signal(void)
+{
+  int handler;
+  int signum;
+  
+  if(argint(0, &signum) < 0){
+    cprintf("err1\n");
+    return -1;
+  }
+  if(argint(1, &handler) < 0){
+    cprintf("err2\n");
+    return -1;
+  }
+  if(signum < 0 || signum >= NUMSIG)
+  {
+    cprintf("err3\n");
+    return -1;
+  }
+  cprintf("registering signal %d as handler %d\n",signum,handler);
+  
+  proc->handlers[signum-1]=(sighandler_t)handler;
+
+  return 0;
+}
+
+int
+sys_sigsend(void)
+{
+  int pid;
+  int signum;
+
+  if(argint(0, &pid) < 0){
+    cprintf("err1\n");
+    return -1;
+  }
+  if(argint(1, &signum) < 0){
+    cprintf("err2\n");
+    return -1;
+  }
+  if(signum < 0 || signum >= NUMSIG)
+  {
+    cprintf("err1\n");
+    return -1;
+  }
+pid = handle_sigsend(pid,signum);
+  return pid;
+}
+
+int 
+sys_alarm(void)
+{
+  int alarm_time;
+  if(argint(0, &alarm_time) < 0){
+
+    return -1;
+  }
+  if (alarm_time<0)
+  {
+    return -1;
+  }
+  if (alarm_time==0)
+  {
+    proc->pending = proc-> pending & ~(1 << (SIGALRM-1));
+    return -1;
+  }
+  
+  //proc->pending = proc-> pending | (1 << SIGALRM);
+  proc->alarm = alarm_time;
+  return 0;
+
+};

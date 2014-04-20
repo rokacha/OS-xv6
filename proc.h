@@ -1,3 +1,4 @@
+#include "signal.h"
 // Segments in proc->gdt.
 #define NSEGS     7
 
@@ -52,8 +53,6 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-typedef void (*sighandler_t)(void);
-
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -81,6 +80,11 @@ struct proc {
   uint iotime;                 //waiting for I/O time
   uint rtime;                  //running time
   int quanta;
+
+  //signal supporting fields
+  uint pending;
+  sighandler_t handlers[NUMSIG]; //the handlers of the process
+  uint alarm; // counter for SIGALARM
 };
 
 // Process memory is laid out contiguously, low addresses first:
