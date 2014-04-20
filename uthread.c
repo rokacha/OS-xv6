@@ -26,6 +26,7 @@ getRunningThread()
   return -1;
 }
 
+<<<<<<< HEAD
 int
 getNextThread()
 {
@@ -40,6 +41,8 @@ getNextThread()
   return -1;
 }
 
+=======
+>>>>>>> 4a3edbd7bfe299abcba4a444befc6101b57f2d1a
 static uthread_p
 allocThread()
 {
@@ -106,6 +109,7 @@ uthread_create(void (*start_func)(void *), void* arg)
       : "=r" (t->esp)
       : "r" (arg) , "r"(start_func)
   );
+  t->state= T_RUNNABLE;
   
   return t->tid;
 }
@@ -156,5 +160,8 @@ newt=&tTable.table[new];
 
 }
 
-// int  uthred_self(void);
+int  uthred_self(void)
+{
+  return 0;
+}
 // int  uthred_join(int tid);

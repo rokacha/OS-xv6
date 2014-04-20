@@ -34,11 +34,31 @@ struct uthread {
 	int firstTime;
 };
 
+struct binary_semaphore
+{
+  uint locked; 				//is the semaphore locked
+  int thread;				//the holding thread
+  uint init;
+  //synchronizing fields (using Lamport’s bakery algorithm)
+  uint choosing[MAX_THREAD];
+  int number[MAX_THREAD] ;
+  int maximalNum;
+};
+
+//uthred.c
 void uthread_init(void);
 int  uthread_create(void (*start_func)(void *), void* arg);
 void uthread_exit(void);
 void uthread_yield(void);
 int  uthred_self(void);
 int  uthred_join(int tid);
+<<<<<<< HEAD
 int getRunningThread();
 int getNextThread();
+=======
+
+//semaphores.c
+void binary_semaphore_init(struct binary_semaphore* semaphore, int value);
+void binary_semaphore_down(struct binary_semaphore* semaphore);
+void binary_semaphore_up(struct binary_semaphore* semaphore);
+>>>>>>> 4a3edbd7bfe299abcba4a444befc6101b57f2d1a
