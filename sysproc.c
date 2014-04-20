@@ -176,7 +176,7 @@ sys_sigsend(void)
   }
   if(signum < 0 || signum >= NUMSIG)
   {
-    cprintf("err1\n");
+    cprintf("err3\n");
     return -1;
   }
 pid = handle_sigsend(pid,signum);

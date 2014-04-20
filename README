@@ -323,3 +323,10 @@ assignment 2:
     // int  uthred_join(int tid);
       
   added lines for compilation in Makefile
+
+  2.4:
+
+
+  makefile:
+  		145)
+			ULIB = ulib.o usys.o printf.o umalloc.o uthread.o

@@ -12,7 +12,33 @@ static struct {
   int current;
 } tTable;
 
+int
+getRunningThread()
+{
+  int i;
+  uthread_p t;
+  
+  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
+  {
+    if(t->state==T_RUNNING)
+      return i;
+  }
+  return -1;
+}
 
+int
+getNextThread()
+{
+  int i;
+  uthread_p t;
+  
+  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
+  {
+    if(t->state==T_RUNNABLE)
+      return i;
+  }
+  return -1;
+}
 
 static uthread_p
 allocThread()
@@ -33,6 +59,7 @@ allocThread()
   t->stack=(char*)malloc(STACK_SIZE);
   t->esp=(int)t->stack;
   t->ebp=(int)t->stack;
+  t->firstTime=0;
   asm("movl %1,%%esp;" "push %2;" "movl %%esp,%0;" //pushes the uthread_exit func as return address
     : "=r" (t->esp) 
     : "r" (t->ebp) , "r"(uthread_exit)
@@ -52,7 +79,7 @@ uthread_init()
   );
   /*moves stack to mainT's stack
   /stacks grow backwards so we start from esp and finsh at ebp*/
-  memmove(mainT->stack , mainT->esp , mainT->ebp - mainT->esp);
+  memmove(mainT->stack , (void*)mainT->esp , mainT->ebp - mainT->esp);
   mainT->state = T_RUNNABLE;
   
   if(signal(SIGALRM,uthread_yield)<0)
@@ -92,7 +119,41 @@ uthread_exit()
 void 
 uthread_yield()
 {
-  //needs to be filled
+  
+  uthread_p oldt;
+  uthread_p newt;
+  int old=getRunningThread();
+  int new=getNextThread();
+  if(old<0)
+  {
+     printf(1,"Cant find running thread");
+    exit();
+  }
+  if(new<0)
+  {
+     printf(1,"Cant find runnable thread");
+    exit();
+  }
+oldt=&tTable.table[old];
+newt=&tTable.table[new];
+  
+    asm("pusha");
+    STORE_ESP(oldt->esp);
+    oldt->state=T_RUNNABLE;
+    LOAD_ESP(newt->esp);
+    
+  
+    newt->state=T_RUNNING;
+
+    asm("popa");
+    if(oldt->firstTime==0)
+    {
+       asm("ret");////only firest time
+       oldt->firstTime=1;
+    }
+   
+
+
 }
 
 // int  uthred_self(void);
