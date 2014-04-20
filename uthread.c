@@ -73,12 +73,10 @@ uthread_create(void (*start_func)(void *), void* arg)
 {
   uthread_p t = allocThread();
   
-  asm("push %1;" 
-      "call %2;" //pushes start_func as return address
-      "addl $8, %%esp;"
+  asm("push %1;"  //stores the arguments to be used
+      "push %2;"  //stores the start_func location
       "movl %%esp,%0;"
-      "ret;"
-      : "=r" (result)
+      : "=r" (t->esp)
       : "r" (arg) , "r"(start_func)
   );
   
