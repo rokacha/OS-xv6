@@ -21,7 +21,7 @@ main(int argc, char **argv)
    9:	83 7d 08 00          	cmpl   $0x0,0x8(%ebp)
    d:	7f 19                	jg     28 <main+0x28>
     printf(2, "usage: kill pid...\n");
-   f:	c7 44 24 04 00 0b 00 	movl   $0xb00,0x4(%esp)
+   f:	c7 44 24 04 a0 0c 00 	movl   $0xca0,0x4(%esp)
   16:	00 
   17:	c7 04 24 02 00 00 00 	movl   $0x2,(%esp)
   1e:	e8 54 04 00 00       	call   477 <printf>
@@ -700,7 +700,7 @@ printint(int fd, int xx, int base, int sgn)
  405:	ba 00 00 00 00       	mov    $0x0,%edx
  40a:	f7 f1                	div    %ecx
  40c:	89 d0                	mov    %edx,%eax
- 40e:	0f b6 90 ac 0e 00 00 	movzbl 0xeac(%eax),%edx
+ 40e:	0f b6 90 6c 10 00 00 	movzbl 0x106c(%eax),%edx
  415:	8d 45 dc             	lea    -0x24(%ebp),%eax
  418:	03 45 f4             	add    -0xc(%ebp),%eax
  41b:	88 10                	mov    %dl,(%eax)
@@ -849,7 +849,7 @@ printf(int fd, char *fmt, ...)
  569:	83 7d f4 00          	cmpl   $0x0,-0xc(%ebp)
  56d:	75 27                	jne    596 <printf+0x11f>
           s = "(null)";
- 56f:	c7 45 f4 14 0b 00 00 	movl   $0xb14,-0xc(%ebp)
+ 56f:	c7 45 f4 b4 0c 00 00 	movl   $0xcb4,-0xc(%ebp)
         while(*s != 0){
  576:	eb 1e                	jmp    596 <printf+0x11f>
           putc(fd, *s);
@@ -961,7 +961,7 @@ free(void *ap)
  635:	83 e8 08             	sub    $0x8,%eax
  638:	89 45 f8             	mov    %eax,-0x8(%ebp)
   for(p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
- 63b:	a1 c8 0e 00 00       	mov    0xec8,%eax
+ 63b:	a1 88 10 00 00       	mov    0x1088,%eax
  640:	89 45 fc             	mov    %eax,-0x4(%ebp)
  643:	eb 24                	jmp    669 <free+0x3d>
     if(p >= p->s.ptr && (bp > p || bp < p->s.ptr))
@@ -1054,7 +1054,7 @@ free(void *ap)
  6f7:	89 10                	mov    %edx,(%eax)
   freep = p;
  6f9:	8b 45 fc             	mov    -0x4(%ebp),%eax
- 6fc:	a3 c8 0e 00 00       	mov    %eax,0xec8
+ 6fc:	a3 88 10 00 00       	mov    %eax,0x1088
 }
  701:	c9                   	leave  
  702:	c3                   	ret    
@@ -1100,7 +1100,7 @@ morecore(uint nu)
  74c:	89 04 24             	mov    %eax,(%esp)
  74f:	e8 d8 fe ff ff       	call   62c <free>
   return freep;
- 754:	a1 c8 0e 00 00       	mov    0xec8,%eax
+ 754:	a1 88 10 00 00       	mov    0x1088,%eax
 }
  759:	c9                   	leave  
  75a:	c3                   	ret    
@@ -1123,18 +1123,18 @@ malloc(uint nbytes)
  76a:	83 c0 01             	add    $0x1,%eax
  76d:	89 45 ec             	mov    %eax,-0x14(%ebp)
   if((prevp = freep) == 0){
- 770:	a1 c8 0e 00 00       	mov    0xec8,%eax
+ 770:	a1 88 10 00 00       	mov    0x1088,%eax
  775:	89 45 f0             	mov    %eax,-0x10(%ebp)
  778:	83 7d f0 00          	cmpl   $0x0,-0x10(%ebp)
  77c:	75 23                	jne    7a1 <malloc+0x46>
     base.s.ptr = freep = prevp = &base;
- 77e:	c7 45 f0 c0 0e 00 00 	movl   $0xec0,-0x10(%ebp)
+ 77e:	c7 45 f0 80 10 00 00 	movl   $0x1080,-0x10(%ebp)
  785:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 788:	a3 c8 0e 00 00       	mov    %eax,0xec8
- 78d:	a1 c8 0e 00 00       	mov    0xec8,%eax
- 792:	a3 c0 0e 00 00       	mov    %eax,0xec0
+ 788:	a3 88 10 00 00       	mov    %eax,0x1088
+ 78d:	a1 88 10 00 00       	mov    0x1088,%eax
+ 792:	a3 80 10 00 00       	mov    %eax,0x1080
     base.s.size = 0;
- 797:	c7 05 c4 0e 00 00 00 	movl   $0x0,0xec4
+ 797:	c7 05 84 10 00 00 00 	movl   $0x0,0x1084
  79e:	00 00 00 
   }
   for(p = prevp->s.ptr; ; prevp = p, p = p->s.ptr){
@@ -1177,14 +1177,14 @@ malloc(uint nbytes)
       }
       freep = prevp;
  7f1:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 7f4:	a3 c8 0e 00 00       	mov    %eax,0xec8
+ 7f4:	a3 88 10 00 00       	mov    %eax,0x1088
       return (void*)(p + 1);
  7f9:	8b 45 f4             	mov    -0xc(%ebp),%eax
  7fc:	83 c0 08             	add    $0x8,%eax
  7ff:	eb 38                	jmp    839 <malloc+0xde>
     }
     if(p == freep)
- 801:	a1 c8 0e 00 00       	mov    0xec8,%eax
+ 801:	a1 88 10 00 00       	mov    0x1088,%eax
  806:	39 45 f4             	cmp    %eax,-0xc(%ebp)
  809:	75 1b                	jne    826 <malloc+0xcb>
       if((p = morecore(nunits)) == 0)
@@ -1220,450 +1220,623 @@ malloc(uint nbytes)
  83a:	c3                   	ret    
  83b:	90                   	nop
 
-0000083c <getRunningThread>:
-  int current;
+0000083c <getNextThread>:
 } tTable;
 
+
 int
-getRunningThread()
+getNextThread(int j)
 {
  83c:	55                   	push   %ebp
  83d:	89 e5                	mov    %esp,%ebp
  83f:	83 ec 10             	sub    $0x10,%esp
-  int i;
-  uthread_p t;
-  
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
- 842:	c7 45 f8 e0 0e 00 00 	movl   $0xee0,-0x8(%ebp)
- 849:	c7 45 fc 00 00 00 00 	movl   $0x0,-0x4(%ebp)
- 850:	eb 18                	jmp    86a <getRunningThread+0x2e>
-  {
-    if(t->state==T_RUNNING)
- 852:	8b 45 f8             	mov    -0x8(%ebp),%eax
- 855:	8b 40 10             	mov    0x10(%eax),%eax
- 858:	83 f8 02             	cmp    $0x2,%eax
- 85b:	75 05                	jne    862 <getRunningThread+0x26>
-      return i;
- 85d:	8b 45 fc             	mov    -0x4(%ebp),%eax
- 860:	eb 16                	jmp    878 <getRunningThread+0x3c>
-getRunningThread()
-{
-  int i;
-  uthread_p t;
-  
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
- 862:	83 45 f8 18          	addl   $0x18,-0x8(%ebp)
- 866:	83 45 fc 01          	addl   $0x1,-0x4(%ebp)
- 86a:	81 7d f8 e0 14 00 00 	cmpl   $0x14e0,-0x8(%ebp)
- 871:	76 df                	jbe    852 <getRunningThread+0x16>
-  {
-    if(t->state==T_RUNNING)
-      return i;
-  }
-  return -1;
- 873:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
-}
- 878:	c9                   	leave  
- 879:	c3                   	ret    
-
-0000087a <getNextThread>:
-
-int
-getNextThread()
-{
- 87a:	55                   	push   %ebp
- 87b:	89 e5                	mov    %esp,%ebp
- 87d:	83 ec 10             	sub    $0x10,%esp
-  int i;
-  uthread_p t;
-  
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
- 880:	c7 45 f8 e0 0e 00 00 	movl   $0xee0,-0x8(%ebp)
- 887:	c7 45 fc 00 00 00 00 	movl   $0x0,-0x4(%ebp)
- 88e:	eb 18                	jmp    8a8 <getNextThread+0x2e>
+  int i=j+1;
+ 842:	8b 45 08             	mov    0x8(%ebp),%eax
+ 845:	83 c0 01             	add    $0x1,%eax
+ 848:	89 45 fc             	mov    %eax,-0x4(%ebp)
+  if(i==MAX_THREAD)
+ 84b:	83 7d fc 40          	cmpl   $0x40,-0x4(%ebp)
+ 84f:	75 07                	jne    858 <getNextThread+0x1c>
+    i=0;
+ 851:	c7 45 fc 00 00 00 00 	movl   $0x0,-0x4(%ebp)
+  uthread_p t=&tTable.table[i];
+ 858:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 85b:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ 861:	05 a0 10 00 00       	add    $0x10a0,%eax
+ 866:	89 45 f8             	mov    %eax,-0x8(%ebp)
+  while(i!=j)
+ 869:	eb 3b                	jmp    8a6 <getNextThread+0x6a>
   {
     if(t->state==T_RUNNABLE)
- 890:	8b 45 f8             	mov    -0x8(%ebp),%eax
- 893:	8b 40 10             	mov    0x10(%eax),%eax
- 896:	83 f8 03             	cmp    $0x3,%eax
- 899:	75 05                	jne    8a0 <getNextThread+0x26>
+ 86b:	8b 45 f8             	mov    -0x8(%ebp),%eax
+ 86e:	8b 40 10             	mov    0x10(%eax),%eax
+ 871:	83 f8 03             	cmp    $0x3,%eax
+ 874:	75 05                	jne    87b <getNextThread+0x3f>
       return i;
- 89b:	8b 45 fc             	mov    -0x4(%ebp),%eax
- 89e:	eb 16                	jmp    8b6 <getNextThread+0x3c>
-getNextThread()
+ 876:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 879:	eb 38                	jmp    8b3 <getNextThread+0x77>
+    i++;
+ 87b:	83 45 fc 01          	addl   $0x1,-0x4(%ebp)
+    if(i==MAX_THREAD)
+ 87f:	83 7d fc 40          	cmpl   $0x40,-0x4(%ebp)
+ 883:	75 1a                	jne    89f <getNextThread+0x63>
+    {
+       i=0;
+ 885:	c7 45 fc 00 00 00 00 	movl   $0x0,-0x4(%ebp)
+       t=&tTable.table[i];
+ 88c:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 88f:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ 895:	05 a0 10 00 00       	add    $0x10a0,%eax
+ 89a:	89 45 f8             	mov    %eax,-0x8(%ebp)
+ 89d:	eb 07                	jmp    8a6 <getNextThread+0x6a>
+    }
+    else
+      t++;
+ 89f:	81 45 f8 18 01 00 00 	addl   $0x118,-0x8(%ebp)
 {
-  int i;
-  uthread_p t;
-  
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
- 8a0:	83 45 f8 18          	addl   $0x18,-0x8(%ebp)
- 8a4:	83 45 fc 01          	addl   $0x1,-0x4(%ebp)
- 8a8:	81 7d f8 e0 14 00 00 	cmpl   $0x14e0,-0x8(%ebp)
- 8af:	76 df                	jbe    890 <getNextThread+0x16>
-  {
-    if(t->state==T_RUNNABLE)
-      return i;
+  int i=j+1;
+  if(i==MAX_THREAD)
+    i=0;
+  uthread_p t=&tTable.table[i];
+  while(i!=j)
+ 8a6:	8b 45 fc             	mov    -0x4(%ebp),%eax
+ 8a9:	3b 45 08             	cmp    0x8(%ebp),%eax
+ 8ac:	75 bd                	jne    86b <getNextThread+0x2f>
+    }
+    else
+      t++;
+    
   }
   return -1;
- 8b1:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+ 8ae:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
 }
- 8b6:	c9                   	leave  
- 8b7:	c3                   	ret    
+ 8b3:	c9                   	leave  
+ 8b4:	c3                   	ret    
 
-000008b8 <allocThread>:
+000008b5 <allocThread>:
+
 
 static uthread_p
 allocThread()
 {
- 8b8:	55                   	push   %ebp
- 8b9:	89 e5                	mov    %esp,%ebp
- 8bb:	83 ec 28             	sub    $0x28,%esp
-  int i;
+ 8b5:	55                   	push   %ebp
+ 8b6:	89 e5                	mov    %esp,%ebp
+ 8b8:	83 ec 28             	sub    $0x28,%esp
+  int i,j;
   uthread_p t;
   
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
- 8be:	c7 45 f0 e0 0e 00 00 	movl   $0xee0,-0x10(%ebp)
- 8c5:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
- 8cc:	eb 12                	jmp    8e0 <allocThread+0x28>
+  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)// <= should be < ??
+ 8bb:	c7 45 ec a0 10 00 00 	movl   $0x10a0,-0x14(%ebp)
+ 8c2:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
+ 8c9:	eb 15                	jmp    8e0 <allocThread+0x2b>
   {
     if(t->state==T_FREE)
- 8ce:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 8d1:	8b 40 10             	mov    0x10(%eax),%eax
- 8d4:	85 c0                	test   %eax,%eax
- 8d6:	74 18                	je     8f0 <allocThread+0x38>
+ 8cb:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 8ce:	8b 40 10             	mov    0x10(%eax),%eax
+ 8d1:	85 c0                	test   %eax,%eax
+ 8d3:	74 1e                	je     8f3 <allocThread+0x3e>
 allocThread()
 {
-  int i;
+  int i,j;
   uthread_p t;
   
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
- 8d8:	83 45 f0 18          	addl   $0x18,-0x10(%ebp)
+  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)// <= should be < ??
+ 8d5:	81 45 ec 18 01 00 00 	addl   $0x118,-0x14(%ebp)
  8dc:	83 45 f4 01          	addl   $0x1,-0xc(%ebp)
- 8e0:	81 7d f0 e0 14 00 00 	cmpl   $0x14e0,-0x10(%ebp)
- 8e7:	76 e5                	jbe    8ce <allocThread+0x16>
+ 8e0:	81 7d ec a0 56 00 00 	cmpl   $0x56a0,-0x14(%ebp)
+ 8e7:	76 e2                	jbe    8cb <allocThread+0x16>
   {
     if(t->state==T_FREE)
       goto found;
   }
   return 0;
  8e9:	b8 00 00 00 00       	mov    $0x0,%eax
- 8ee:	eb 64                	jmp    954 <allocThread+0x9c>
+ 8ee:	e9 88 00 00 00       	jmp    97b <allocThread+0xc6>
   uthread_p t;
   
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)
+  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)// <= should be < ??
   {
     if(t->state==T_FREE)
       goto found;
- 8f0:	90                   	nop
+ 8f3:	90                   	nop
   }
   return 0;
   
   found:
   
   t->tid=i;
- 8f1:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 8f4:	8b 55 f4             	mov    -0xc(%ebp),%edx
- 8f7:	89 10                	mov    %edx,(%eax)
+ 8f4:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 8f7:	8b 55 f4             	mov    -0xc(%ebp),%edx
+ 8fa:	89 10                	mov    %edx,(%eax)
   t->stack=(char*)malloc(STACK_SIZE);
- 8f9:	c7 04 24 00 10 00 00 	movl   $0x1000,(%esp)
- 900:	e8 56 fe ff ff       	call   75b <malloc>
- 905:	8b 55 f0             	mov    -0x10(%ebp),%edx
- 908:	89 42 0c             	mov    %eax,0xc(%edx)
+ 8fc:	c7 04 24 00 10 00 00 	movl   $0x1000,(%esp)
+ 903:	e8 53 fe ff ff       	call   75b <malloc>
+ 908:	8b 55 ec             	mov    -0x14(%ebp),%edx
+ 90b:	89 42 0c             	mov    %eax,0xc(%edx)
   t->esp=(int)t->stack;
- 90b:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 90e:	8b 40 0c             	mov    0xc(%eax),%eax
- 911:	89 c2                	mov    %eax,%edx
- 913:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 916:	89 50 04             	mov    %edx,0x4(%eax)
+ 90e:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 911:	8b 40 0c             	mov    0xc(%eax),%eax
+ 914:	89 c2                	mov    %eax,%edx
+ 916:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 919:	89 50 04             	mov    %edx,0x4(%eax)
   t->ebp=(int)t->stack;
- 919:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 91c:	8b 40 0c             	mov    0xc(%eax),%eax
- 91f:	89 c2                	mov    %eax,%edx
- 921:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 924:	89 50 08             	mov    %edx,0x8(%eax)
+ 91c:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 91f:	8b 40 0c             	mov    0xc(%eax),%eax
+ 922:	89 c2                	mov    %eax,%edx
+ 924:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 927:	89 50 08             	mov    %edx,0x8(%eax)
   t->firstTime=0;
- 927:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 92a:	c7 40 14 00 00 00 00 	movl   $0x0,0x14(%eax)
+ 92a:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 92d:	c7 40 14 00 00 00 00 	movl   $0x0,0x14(%eax)
+  for(j=0;j<64;j++)
+ 934:	c7 45 f0 00 00 00 00 	movl   $0x0,-0x10(%ebp)
+ 93b:	eb 15                	jmp    952 <allocThread+0x9d>
+  {
+    t->waiting[j]=-1;
+ 93d:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 940:	8b 55 f0             	mov    -0x10(%ebp),%edx
+ 943:	83 c2 04             	add    $0x4,%edx
+ 946:	c7 44 90 08 ff ff ff 	movl   $0xffffffff,0x8(%eax,%edx,4)
+ 94d:	ff 
+  t->tid=i;
+  t->stack=(char*)malloc(STACK_SIZE);
+  t->esp=(int)t->stack;
+  t->ebp=(int)t->stack;
+  t->firstTime=0;
+  for(j=0;j<64;j++)
+ 94e:	83 45 f0 01          	addl   $0x1,-0x10(%ebp)
+ 952:	83 7d f0 3f          	cmpl   $0x3f,-0x10(%ebp)
+ 956:	7e e5                	jle    93d <allocThread+0x88>
+  {
+    t->waiting[j]=-1;
+  }
   asm("movl %1,%%esp;" "push %2;" "movl %%esp,%0;" //pushes the uthread_exit func as return address
     : "=r" (t->esp) 
     : "r" (t->ebp) , "r"(uthread_exit)
- 931:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 934:	8b 40 08             	mov    0x8(%eax),%eax
-  t->tid=i;
-  t->stack=(char*)malloc(STACK_SIZE);
-  t->esp=(int)t->stack;
-  t->ebp=(int)t->stack;
+ 958:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 95b:	8b 40 08             	mov    0x8(%eax),%eax
   t->firstTime=0;
+  for(j=0;j<64;j++)
+  {
+    t->waiting[j]=-1;
+  }
   asm("movl %1,%%esp;" "push %2;" "movl %%esp,%0;" //pushes the uthread_exit func as return address
- 937:	ba 41 0a 00 00       	mov    $0xa41,%edx
- 93c:	89 c4                	mov    %eax,%esp
- 93e:	52                   	push   %edx
- 93f:	89 e2                	mov    %esp,%edx
+ 95e:	ba 7a 0a 00 00       	mov    $0xa7a,%edx
+ 963:	89 c4                	mov    %eax,%esp
+ 965:	52                   	push   %edx
+ 966:	89 e2                	mov    %esp,%edx
     : "=r" (t->esp) 
- 941:	8b 45 f0             	mov    -0x10(%ebp),%eax
-  t->tid=i;
-  t->stack=(char*)malloc(STACK_SIZE);
-  t->esp=(int)t->stack;
-  t->ebp=(int)t->stack;
+ 968:	8b 45 ec             	mov    -0x14(%ebp),%eax
   t->firstTime=0;
+  for(j=0;j<64;j++)
+  {
+    t->waiting[j]=-1;
+  }
   asm("movl %1,%%esp;" "push %2;" "movl %%esp,%0;" //pushes the uthread_exit func as return address
- 944:	89 50 04             	mov    %edx,0x4(%eax)
+ 96b:	89 50 04             	mov    %edx,0x4(%eax)
     : "=r" (t->esp) 
     : "r" (t->ebp) , "r"(uthread_exit)
   );
   t->state=T_UNINIT;
- 947:	8b 45 f0             	mov    -0x10(%ebp),%eax
- 94a:	c7 40 10 01 00 00 00 	movl   $0x1,0x10(%eax)
+ 96e:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ 971:	c7 40 10 01 00 00 00 	movl   $0x1,0x10(%eax)
   return t;
- 951:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ 978:	8b 45 ec             	mov    -0x14(%ebp),%eax
 }
- 954:	c9                   	leave  
- 955:	c3                   	ret    
+ 97b:	c9                   	leave  
+ 97c:	c3                   	ret    
 
-00000956 <uthread_init>:
+0000097d <uthread_init>:
 
 void 
 uthread_init()
 {  
- 956:	55                   	push   %ebp
- 957:	89 e5                	mov    %esp,%ebp
- 959:	83 ec 28             	sub    $0x28,%esp
+ 97d:	55                   	push   %ebp
+ 97e:	89 e5                	mov    %esp,%ebp
+ 980:	83 ec 28             	sub    $0x28,%esp
   tTable.length=0;
- 95c:	c7 05 e0 14 00 00 00 	movl   $0x0,0x14e0
- 963:	00 00 00 
+ 983:	c7 05 a0 56 00 00 00 	movl   $0x0,0x56a0
+ 98a:	00 00 00 
   tTable.current=0;
- 966:	c7 05 e4 14 00 00 00 	movl   $0x0,0x14e4
- 96d:	00 00 00 
+ 98d:	c7 05 a4 56 00 00 00 	movl   $0x0,0x56a4
+ 994:	00 00 00 
   uthread_p mainT = allocThread(); //needed to allocate the main thread !!!!!!
- 970:	e8 43 ff ff ff       	call   8b8 <allocThread>
- 975:	89 45 f4             	mov    %eax,-0xc(%ebp)
+ 997:	e8 19 ff ff ff       	call   8b5 <allocThread>
+ 99c:	89 45 f4             	mov    %eax,-0xc(%ebp)
   asm("movl %%ebp,%0;" "movl %%esp,%1;" //get current thread ebp and esp
- 978:	89 e9                	mov    %ebp,%ecx
- 97a:	89 e2                	mov    %esp,%edx
+ 99f:	89 e9                	mov    %ebp,%ecx
+ 9a1:	89 e2                	mov    %esp,%edx
     : "=r" (mainT->ebp) ,"=r"(mainT->esp)    
- 97c:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9a3:	8b 45 f4             	mov    -0xc(%ebp),%eax
 uthread_init()
 {  
   tTable.length=0;
   tTable.current=0;
   uthread_p mainT = allocThread(); //needed to allocate the main thread !!!!!!
   asm("movl %%ebp,%0;" "movl %%esp,%1;" //get current thread ebp and esp
- 97f:	89 48 08             	mov    %ecx,0x8(%eax)
+ 9a6:	89 48 08             	mov    %ecx,0x8(%eax)
     : "=r" (mainT->ebp) ,"=r"(mainT->esp)    
- 982:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9a9:	8b 45 f4             	mov    -0xc(%ebp),%eax
 uthread_init()
 {  
   tTable.length=0;
   tTable.current=0;
   uthread_p mainT = allocThread(); //needed to allocate the main thread !!!!!!
   asm("movl %%ebp,%0;" "movl %%esp,%1;" //get current thread ebp and esp
- 985:	89 50 04             	mov    %edx,0x4(%eax)
+ 9ac:	89 50 04             	mov    %edx,0x4(%eax)
     : "=r" (mainT->ebp) ,"=r"(mainT->esp)    
   );
   /*moves stack to mainT's stack
   /stacks grow backwards so we start from esp and finsh at ebp*/
   memmove(mainT->stack , (void*)mainT->esp , mainT->ebp - mainT->esp);
- 988:	8b 45 f4             	mov    -0xc(%ebp),%eax
- 98b:	8b 50 08             	mov    0x8(%eax),%edx
- 98e:	8b 45 f4             	mov    -0xc(%ebp),%eax
- 991:	8b 40 04             	mov    0x4(%eax),%eax
- 994:	89 d1                	mov    %edx,%ecx
- 996:	29 c1                	sub    %eax,%ecx
- 998:	8b 45 f4             	mov    -0xc(%ebp),%eax
- 99b:	8b 40 04             	mov    0x4(%eax),%eax
- 99e:	89 c2                	mov    %eax,%edx
- 9a0:	8b 45 f4             	mov    -0xc(%ebp),%eax
- 9a3:	8b 40 0c             	mov    0xc(%eax),%eax
- 9a6:	89 4c 24 08          	mov    %ecx,0x8(%esp)
- 9aa:	89 54 24 04          	mov    %edx,0x4(%esp)
- 9ae:	89 04 24             	mov    %eax,(%esp)
- 9b1:	e8 cc f8 ff ff       	call   282 <memmove>
+ 9af:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9b2:	8b 50 08             	mov    0x8(%eax),%edx
+ 9b5:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9b8:	8b 40 04             	mov    0x4(%eax),%eax
+ 9bb:	89 d1                	mov    %edx,%ecx
+ 9bd:	29 c1                	sub    %eax,%ecx
+ 9bf:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9c2:	8b 40 04             	mov    0x4(%eax),%eax
+ 9c5:	89 c2                	mov    %eax,%edx
+ 9c7:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9ca:	8b 40 0c             	mov    0xc(%eax),%eax
+ 9cd:	89 4c 24 08          	mov    %ecx,0x8(%esp)
+ 9d1:	89 54 24 04          	mov    %edx,0x4(%esp)
+ 9d5:	89 04 24             	mov    %eax,(%esp)
+ 9d8:	e8 a5 f8 ff ff       	call   282 <memmove>
   mainT->state = T_RUNNABLE;
- 9b6:	8b 45 f4             	mov    -0xc(%ebp),%eax
- 9b9:	c7 40 10 03 00 00 00 	movl   $0x3,0x10(%eax)
-  
+ 9dd:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9e0:	c7 40 10 03 00 00 00 	movl   $0x3,0x10(%eax)
+  currentThread=mainT;
+ 9e7:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ 9ea:	a3 a8 56 00 00       	mov    %eax,0x56a8
   if(signal(SIGALRM,uthread_yield)<0)
- 9c0:	c7 44 24 04 46 0a 00 	movl   $0xa46,0x4(%esp)
- 9c7:	00 
- 9c8:	c7 04 24 0e 00 00 00 	movl   $0xe,(%esp)
- 9cf:	e8 b4 f9 ff ff       	call   388 <signal>
- 9d4:	85 c0                	test   %eax,%eax
- 9d6:	79 19                	jns    9f1 <uthread_init+0x9b>
+ 9ef:	c7 44 24 04 ea 0b 00 	movl   $0xbea,0x4(%esp)
+ 9f6:	00 
+ 9f7:	c7 04 24 0e 00 00 00 	movl   $0xe,(%esp)
+ 9fe:	e8 85 f9 ff ff       	call   388 <signal>
+ a03:	85 c0                	test   %eax,%eax
+ a05:	79 19                	jns    a20 <uthread_init+0xa3>
   {
     printf(1,"Cant register the alarm signal");
- 9d8:	c7 44 24 04 1c 0b 00 	movl   $0xb1c,0x4(%esp)
- 9df:	00 
- 9e0:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
- 9e7:	e8 8b fa ff ff       	call   477 <printf>
+ a07:	c7 44 24 04 bc 0c 00 	movl   $0xcbc,0x4(%esp)
+ a0e:	00 
+ a0f:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+ a16:	e8 5c fa ff ff       	call   477 <printf>
     exit();
- 9ec:	e8 d7 f8 ff ff       	call   2c8 <exit>
+ a1b:	e8 a8 f8 ff ff       	call   2c8 <exit>
   }
   if(alarm(THREAD_QUANTA)<0)
- 9f1:	c7 04 24 05 00 00 00 	movl   $0x5,(%esp)
- 9f8:	e8 9b f9 ff ff       	call   398 <alarm>
- 9fd:	85 c0                	test   %eax,%eax
- 9ff:	79 19                	jns    a1a <uthread_init+0xc4>
+ a20:	c7 04 24 05 00 00 00 	movl   $0x5,(%esp)
+ a27:	e8 6c f9 ff ff       	call   398 <alarm>
+ a2c:	85 c0                	test   %eax,%eax
+ a2e:	79 19                	jns    a49 <uthread_init+0xcc>
   {
     printf(1,"Cant activate alarm system call");
- a01:	c7 44 24 04 3c 0b 00 	movl   $0xb3c,0x4(%esp)
- a08:	00 
- a09:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
- a10:	e8 62 fa ff ff       	call   477 <printf>
+ a30:	c7 44 24 04 dc 0c 00 	movl   $0xcdc,0x4(%esp)
+ a37:	00 
+ a38:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+ a3f:	e8 33 fa ff ff       	call   477 <printf>
     exit();
- a15:	e8 ae f8 ff ff       	call   2c8 <exit>
+ a44:	e8 7f f8 ff ff       	call   2c8 <exit>
   }
   
 }
- a1a:	c9                   	leave  
- a1b:	c3                   	ret    
+ a49:	c9                   	leave  
+ a4a:	c3                   	ret    
 
-00000a1c <uthread_create>:
+00000a4b <uthread_create>:
 
 int  
 uthread_create(void (*start_func)(void *), void* arg)
 {
- a1c:	55                   	push   %ebp
- a1d:	89 e5                	mov    %esp,%ebp
- a1f:	83 ec 18             	sub    $0x18,%esp
+ a4b:	55                   	push   %ebp
+ a4c:	89 e5                	mov    %esp,%ebp
+ a4e:	83 ec 18             	sub    $0x18,%esp
   uthread_p t = allocThread();
- a22:	e8 91 fe ff ff       	call   8b8 <allocThread>
- a27:	89 45 f4             	mov    %eax,-0xc(%ebp)
+ a51:	e8 5f fe ff ff       	call   8b5 <allocThread>
+ a56:	89 45 f4             	mov    %eax,-0xc(%ebp)
   
   asm("push %1;"  //stores the arguments to be used
- a2a:	8b 45 0c             	mov    0xc(%ebp),%eax
- a2d:	8b 55 08             	mov    0x8(%ebp),%edx
- a30:	50                   	push   %eax
- a31:	52                   	push   %edx
- a32:	89 e2                	mov    %esp,%edx
+ a59:	8b 45 0c             	mov    0xc(%ebp),%eax
+ a5c:	8b 55 08             	mov    0x8(%ebp),%edx
+ a5f:	50                   	push   %eax
+ a60:	52                   	push   %edx
+ a61:	89 e2                	mov    %esp,%edx
       "push %2;"  //stores the start_func location
       "movl %%esp,%0;"
       : "=r" (t->esp)
- a34:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ a63:	8b 45 f4             	mov    -0xc(%ebp),%eax
 int  
 uthread_create(void (*start_func)(void *), void* arg)
 {
   uthread_p t = allocThread();
   
   asm("push %1;"  //stores the arguments to be used
- a37:	89 50 04             	mov    %edx,0x4(%eax)
+ a66:	89 50 04             	mov    %edx,0x4(%eax)
+      "push %2;"  //stores the start_func location
       "movl %%esp,%0;"
       : "=r" (t->esp)
       : "r" (arg) , "r"(start_func)
   );
+  t->state= T_RUNNABLE;
+ a69:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ a6c:	c7 40 10 03 00 00 00 	movl   $0x3,0x10(%eax)
   
   return t->tid;
- a3a:	8b 45 f4             	mov    -0xc(%ebp),%eax
- a3d:	8b 00                	mov    (%eax),%eax
+ a73:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ a76:	8b 00                	mov    (%eax),%eax
 }
- a3f:	c9                   	leave  
- a40:	c3                   	ret    
+ a78:	c9                   	leave  
+ a79:	c3                   	ret    
 
-00000a41 <uthread_exit>:
+00000a7a <uthread_exit>:
 
 void 
 uthread_exit()
 {
- a41:	55                   	push   %ebp
- a42:	89 e5                	mov    %esp,%ebp
-  //needs to be filled
+ a7a:	55                   	push   %ebp
+ a7b:	89 e5                	mov    %esp,%ebp
+ a7d:	83 ec 28             	sub    $0x28,%esp
+  uthread_p newt;
+  int old=currentThread->tid;
+ a80:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ a85:	8b 00                	mov    (%eax),%eax
+ a87:	89 45 f0             	mov    %eax,-0x10(%ebp)
+  
+  int i=0;
+ a8a:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
+  while(currentThread->waiting[i]!=-1)
+ a91:	eb 25                	jmp    ab8 <uthread_exit+0x3e>
+  {
+    (&tTable.table[currentThread->waiting[i]])->state=T_RUNNABLE;
+ a93:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ a98:	8b 55 f4             	mov    -0xc(%ebp),%edx
+ a9b:	83 c2 04             	add    $0x4,%edx
+ a9e:	8b 44 90 08          	mov    0x8(%eax,%edx,4),%eax
+ aa2:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ aa8:	05 a0 10 00 00       	add    $0x10a0,%eax
+ aad:	c7 40 10 03 00 00 00 	movl   $0x3,0x10(%eax)
+    i++;
+ ab4:	83 45 f4 01          	addl   $0x1,-0xc(%ebp)
+{
+  uthread_p newt;
+  int old=currentThread->tid;
+  
+  int i=0;
+  while(currentThread->waiting[i]!=-1)
+ ab8:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ abd:	8b 55 f4             	mov    -0xc(%ebp),%edx
+ ac0:	83 c2 04             	add    $0x4,%edx
+ ac3:	8b 44 90 08          	mov    0x8(%eax,%edx,4),%eax
+ ac7:	83 f8 ff             	cmp    $0xffffffff,%eax
+ aca:	75 c7                	jne    a93 <uthread_exit+0x19>
+  {
+    (&tTable.table[currentThread->waiting[i]])->state=T_RUNNABLE;
+    i++;
+  }
+  currentThread->tid=-1;
+ acc:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ ad1:	c7 00 ff ff ff ff    	movl   $0xffffffff,(%eax)
+  currentThread->esp=-1;
+ ad7:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ adc:	c7 40 04 ff ff ff ff 	movl   $0xffffffff,0x4(%eax)
+  currentThread->ebp=-1;
+ ae3:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ ae8:	c7 40 08 ff ff ff ff 	movl   $0xffffffff,0x8(%eax)
+  free(currentThread->stack);
+ aef:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ af4:	8b 40 0c             	mov    0xc(%eax),%eax
+ af7:	89 04 24             	mov    %eax,(%esp)
+ afa:	e8 2d fb ff ff       	call   62c <free>
+  currentThread->state=T_FREE;
+ aff:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ b04:	c7 40 10 00 00 00 00 	movl   $0x0,0x10(%eax)
+  currentThread->firstTime=0;
+ b0b:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ b10:	c7 40 14 00 00 00 00 	movl   $0x0,0x14(%eax)
+  int new=getNextThread(old);
+ b17:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ b1a:	89 04 24             	mov    %eax,(%esp)
+ b1d:	e8 1a fd ff ff       	call   83c <getNextThread>
+ b22:	89 45 ec             	mov    %eax,-0x14(%ebp)
+  if(new>=0)
+ b25:	83 7d ec 00          	cmpl   $0x0,-0x14(%ebp)
+ b29:	78 36                	js     b61 <uthread_exit+0xe7>
+          {
+             newt=&tTable.table[new];
+ b2b:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ b2e:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ b34:	05 a0 10 00 00       	add    $0x10a0,%eax
+ b39:	89 45 e8             	mov    %eax,-0x18(%ebp)
+             newt->state=T_RUNNING;
+ b3c:	8b 45 e8             	mov    -0x18(%ebp),%eax
+ b3f:	c7 40 10 02 00 00 00 	movl   $0x2,0x10(%eax)
+             LOAD_ESP(newt->esp);
+ b46:	8b 45 e8             	mov    -0x18(%ebp),%eax
+ b49:	8b 40 04             	mov    0x4(%eax),%eax
+ b4c:	89 c4                	mov    %eax,%esp
+             LOAD_EBP(newt->ebp);
+ b4e:	8b 45 e8             	mov    -0x18(%ebp),%eax
+ b51:	8b 40 08             	mov    0x8(%eax),%eax
+ b54:	89 c5                	mov    %eax,%ebp
+             asm("popa");
+ b56:	61                   	popa   
+             currentThread=newt;
+ b57:	8b 45 e8             	mov    -0x18(%ebp),%eax
+ b5a:	a3 a8 56 00 00       	mov    %eax,0x56a8
+        {/////what if some thread state is sleeping?
+             
+             exit();
+        }
+     
 }
- a44:	5d                   	pop    %ebp
- a45:	c3                   	ret    
+ b5f:	c9                   	leave  
+ b60:	c3                   	ret    
+             currentThread=newt;
+          }
+        else
+        {/////what if some thread state is sleeping?
+             
+             exit();
+ b61:	e8 62 f7 ff ff       	call   2c8 <exit>
 
-00000a46 <uthread_yield>:
+00000b66 <uthred_join>:
+}
+
+
+int
+uthred_join(int tid)
+{
+ b66:	55                   	push   %ebp
+ b67:	89 e5                	mov    %esp,%ebp
+ b69:	83 ec 18             	sub    $0x18,%esp
+  if((&tTable.table[tid])->state==T_FREE)
+ b6c:	8b 45 08             	mov    0x8(%ebp),%eax
+ b6f:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ b75:	05 a0 10 00 00       	add    $0x10a0,%eax
+ b7a:	8b 40 10             	mov    0x10(%eax),%eax
+ b7d:	85 c0                	test   %eax,%eax
+ b7f:	75 07                	jne    b88 <uthred_join+0x22>
+    return -1;
+ b81:	b8 ff ff ff ff       	mov    $0xffffffff,%eax
+ b86:	eb 60                	jmp    be8 <uthred_join+0x82>
+  else
+  {
+      int i=0;
+ b88:	c7 45 f4 00 00 00 00 	movl   $0x0,-0xc(%ebp)
+      while((&tTable.table[tid])->waiting[i]!=-1)
+ b8f:	eb 04                	jmp    b95 <uthred_join+0x2f>
+        i++;
+ b91:	83 45 f4 01          	addl   $0x1,-0xc(%ebp)
+  if((&tTable.table[tid])->state==T_FREE)
+    return -1;
+  else
+  {
+      int i=0;
+      while((&tTable.table[tid])->waiting[i]!=-1)
+ b95:	8b 45 08             	mov    0x8(%ebp),%eax
+ b98:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ b9e:	05 a0 10 00 00       	add    $0x10a0,%eax
+ ba3:	8b 55 f4             	mov    -0xc(%ebp),%edx
+ ba6:	83 c2 04             	add    $0x4,%edx
+ ba9:	8b 44 90 08          	mov    0x8(%eax,%edx,4),%eax
+ bad:	83 f8 ff             	cmp    $0xffffffff,%eax
+ bb0:	75 df                	jne    b91 <uthred_join+0x2b>
+        i++;
+      (&tTable.table[tid])->waiting[i]=currentThread->tid;
+ bb2:	8b 45 08             	mov    0x8(%ebp),%eax
+ bb5:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ bbb:	8d 90 a0 10 00 00    	lea    0x10a0(%eax),%edx
+ bc1:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ bc6:	8b 00                	mov    (%eax),%eax
+ bc8:	8b 4d f4             	mov    -0xc(%ebp),%ecx
+ bcb:	83 c1 04             	add    $0x4,%ecx
+ bce:	89 44 8a 08          	mov    %eax,0x8(%edx,%ecx,4)
+      currentThread->state=T_SLEEPING;
+ bd2:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ bd7:	c7 40 10 04 00 00 00 	movl   $0x4,0x10(%eax)
+      uthread_yield();
+ bde:	e8 07 00 00 00       	call   bea <uthread_yield>
+      return 1;
+ be3:	b8 01 00 00 00       	mov    $0x1,%eax
+  }
+}
+ be8:	c9                   	leave  
+ be9:	c3                   	ret    
+
+00000bea <uthread_yield>:
 
 void 
 uthread_yield()
 {
- a46:	55                   	push   %ebp
- a47:	89 e5                	mov    %esp,%ebp
- a49:	83 ec 28             	sub    $0x28,%esp
-  
-  uthread_p oldt;
+ bea:	55                   	push   %ebp
+ beb:	89 e5                	mov    %esp,%ebp
+ bed:	83 ec 28             	sub    $0x28,%esp
   uthread_p newt;
-  int old=getRunningThread();
- a4c:	e8 eb fd ff ff       	call   83c <getRunningThread>
- a51:	89 45 f4             	mov    %eax,-0xc(%ebp)
-  int new=getNextThread();
- a54:	e8 21 fe ff ff       	call   87a <getNextThread>
- a59:	89 45 f0             	mov    %eax,-0x10(%ebp)
-  if(old<0)
- a5c:	83 7d f4 00          	cmpl   $0x0,-0xc(%ebp)
- a60:	79 19                	jns    a7b <uthread_yield+0x35>
-  {
-     printf(1,"Cant find running thread");
- a62:	c7 44 24 04 5c 0b 00 	movl   $0xb5c,0x4(%esp)
- a69:	00 
- a6a:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
- a71:	e8 01 fa ff ff       	call   477 <printf>
-    exit();
- a76:	e8 4d f8 ff ff       	call   2c8 <exit>
-  }
+  int old=currentThread->tid;
+ bf0:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ bf5:	8b 00                	mov    (%eax),%eax
+ bf7:	89 45 f4             	mov    %eax,-0xc(%ebp)
+  int new=getNextThread(old);
+ bfa:	8b 45 f4             	mov    -0xc(%ebp),%eax
+ bfd:	89 04 24             	mov    %eax,(%esp)
+ c00:	e8 37 fc ff ff       	call   83c <getNextThread>
+ c05:	89 45 f0             	mov    %eax,-0x10(%ebp)
   if(new<0)
- a7b:	83 7d f0 00          	cmpl   $0x0,-0x10(%ebp)
- a7f:	79 19                	jns    a9a <uthread_yield+0x54>
+ c08:	83 7d f0 00          	cmpl   $0x0,-0x10(%ebp)
+ c0c:	79 19                	jns    c27 <uthread_yield+0x3d>
   {
-     printf(1,"Cant find runnable thread");
- a81:	c7 44 24 04 75 0b 00 	movl   $0xb75,0x4(%esp)
- a88:	00 
- a89:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
- a90:	e8 e2 f9 ff ff       	call   477 <printf>
+     printf(1,"(fun uthread_yield)Cant find runnable thread");
+ c0e:	c7 44 24 04 fc 0c 00 	movl   $0xcfc,0x4(%esp)
+ c15:	00 
+ c16:	c7 04 24 01 00 00 00 	movl   $0x1,(%esp)
+ c1d:	e8 55 f8 ff ff       	call   477 <printf>
     exit();
- a95:	e8 2e f8 ff ff       	call   2c8 <exit>
+ c22:	e8 a1 f6 ff ff       	call   2c8 <exit>
   }
-oldt=&tTable.table[old];
- a9a:	8b 55 f4             	mov    -0xc(%ebp),%edx
- a9d:	89 d0                	mov    %edx,%eax
- a9f:	01 c0                	add    %eax,%eax
- aa1:	01 d0                	add    %edx,%eax
- aa3:	c1 e0 03             	shl    $0x3,%eax
- aa6:	05 e0 0e 00 00       	add    $0xee0,%eax
- aab:	89 45 ec             	mov    %eax,-0x14(%ebp)
 newt=&tTable.table[new];
- aae:	8b 55 f0             	mov    -0x10(%ebp),%edx
- ab1:	89 d0                	mov    %edx,%eax
- ab3:	01 c0                	add    %eax,%eax
- ab5:	01 d0                	add    %edx,%eax
- ab7:	c1 e0 03             	shl    $0x3,%eax
- aba:	05 e0 0e 00 00       	add    $0xee0,%eax
- abf:	89 45 e8             	mov    %eax,-0x18(%ebp)
+ c27:	8b 45 f0             	mov    -0x10(%ebp),%eax
+ c2a:	69 c0 18 01 00 00    	imul   $0x118,%eax,%eax
+ c30:	05 a0 10 00 00       	add    $0x10a0,%eax
+ c35:	89 45 ec             	mov    %eax,-0x14(%ebp)
   
     asm("pusha");
- ac2:	60                   	pusha  
-    STORE_ESP(oldt->esp);
- ac3:	89 e2                	mov    %esp,%edx
- ac5:	8b 45 ec             	mov    -0x14(%ebp),%eax
- ac8:	89 50 04             	mov    %edx,0x4(%eax)
-    oldt->state=T_RUNNABLE;
- acb:	8b 45 ec             	mov    -0x14(%ebp),%eax
- ace:	c7 40 10 03 00 00 00 	movl   $0x3,0x10(%eax)
+ c38:	60                   	pusha  
+    STORE_ESP(currentThread->esp);
+ c39:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ c3e:	89 e2                	mov    %esp,%edx
+ c40:	89 50 04             	mov    %edx,0x4(%eax)
+    if(currentThread->state==T_RUNNING)
+ c43:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ c48:	8b 40 10             	mov    0x10(%eax),%eax
+ c4b:	83 f8 02             	cmp    $0x2,%eax
+ c4e:	75 0c                	jne    c5c <uthread_yield+0x72>
+      currentThread->state=T_RUNNABLE;
+ c50:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ c55:	c7 40 10 03 00 00 00 	movl   $0x3,0x10(%eax)
     LOAD_ESP(newt->esp);
- ad5:	8b 45 e8             	mov    -0x18(%ebp),%eax
- ad8:	8b 40 04             	mov    0x4(%eax),%eax
- adb:	89 c4                	mov    %eax,%esp
+ c5c:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ c5f:	8b 40 04             	mov    0x4(%eax),%eax
+ c62:	89 c4                	mov    %eax,%esp
     
   
     newt->state=T_RUNNING;
- add:	8b 45 e8             	mov    -0x18(%ebp),%eax
- ae0:	c7 40 10 02 00 00 00 	movl   $0x2,0x10(%eax)
+ c64:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ c67:	c7 40 10 02 00 00 00 	movl   $0x2,0x10(%eax)
 
     asm("popa");
- ae7:	61                   	popa   
-    if(oldt->firstTime==0)
- ae8:	8b 45 ec             	mov    -0x14(%ebp),%eax
- aeb:	8b 40 14             	mov    0x14(%eax),%eax
- aee:	85 c0                	test   %eax,%eax
- af0:	75 0b                	jne    afd <uthread_yield+0xb7>
+ c6e:	61                   	popa   
+    if(currentThread->firstTime==0)
+ c6f:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ c74:	8b 40 14             	mov    0x14(%eax),%eax
+ c77:	85 c0                	test   %eax,%eax
+ c79:	75 0d                	jne    c88 <uthread_yield+0x9e>
     {
        asm("ret");////only firest time
- af2:	c3                   	ret    
-       oldt->firstTime=1;
- af3:	8b 45 ec             	mov    -0x14(%ebp),%eax
- af6:	c7 40 14 01 00 00 00 	movl   $0x1,0x14(%eax)
+ c7b:	c3                   	ret    
+       currentThread->firstTime=1;
+ c7c:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ c81:	c7 40 14 01 00 00 00 	movl   $0x1,0x14(%eax)
     }
    
-
+currentThread=newt;
+ c88:	8b 45 ec             	mov    -0x14(%ebp),%eax
+ c8b:	a3 a8 56 00 00       	mov    %eax,0x56a8
 
 }
- afd:	c9                   	leave  
- afe:	c3                   	ret    
+ c90:	c9                   	leave  
+ c91:	c3                   	ret    
+
+00000c92 <uthred_self>:
+
+int  uthred_self(void)
+{
+ c92:	55                   	push   %ebp
+ c93:	89 e5                	mov    %esp,%ebp
+  return currentThread->tid;
+ c95:	a1 a8 56 00 00       	mov    0x56a8,%eax
+ c9a:	8b 00                	mov    (%eax),%eax
+}
+ c9c:	5d                   	pop    %ebp
+ c9d:	c3                   	ret    

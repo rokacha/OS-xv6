@@ -9,6 +9,9 @@
 // Loads the contents of var into esp
 #define LOAD_ESP(var)   asm("movl %0, %%esp;" : : "r" ( var ))
 
+// Loads the contents of var into ebp
+#define LOAD_EBP(var)   asm("movl %0, %%ebp;" : : "r" ( var ))
+
 // Calls the function func
 #define CALL(addr)              asm("call *%0;" : : "r" ( addr ))
 
@@ -23,7 +26,7 @@ typedef enum  {T_FREE,T_UNINIT, T_RUNNING, T_RUNNABLE, T_SLEEPING} uthread_state
 #define MAX_THREAD  64
 
 typedef struct uthread uthread_t, *uthread_p;
-
+struct uthread *currentThread;
 struct uthread {
   int	tid;		/* thread's id */
   int	esp;		/* current stack pointer */
@@ -32,6 +35,7 @@ struct uthread {
   uthread_state	state;	/* running, runnable, sleeping */
 
 	int firstTime;
+  int waiting[MAX_THREAD];
 };
 
 struct binary_semaphore
@@ -52,13 +56,12 @@ void uthread_exit(void);
 void uthread_yield(void);
 int  uthred_self(void);
 int  uthred_join(int tid);
-<<<<<<< HEAD
-int getRunningThread();
-int getNextThread();
-=======
+
+
+int getNextThread(int j);
 
 //semaphores.c
 void binary_semaphore_init(struct binary_semaphore* semaphore, int value);
 void binary_semaphore_down(struct binary_semaphore* semaphore);
 void binary_semaphore_up(struct binary_semaphore* semaphore);
->>>>>>> 4a3edbd7bfe299abcba4a444befc6101b57f2d1a
+
