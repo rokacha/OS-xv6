@@ -144,74 +144,68 @@ uthread_exit()
    {
     printf(1,"Cant activate alarm system call");
     exit();
+   }
+  }
+  else
+    {/////what if some thread state is sleeping?
+      exit();
+    }
+}
+
+int
+uthred_join(int tid)
+{
+  if((&tTable.table[tid])->state==T_FREE)
+    return -1;
+  else
+  {
+    int i=0;
+    while((&tTable.table[tid])->waiting[i]!=-1)
+      i++;
+    (&tTable.table[tid])->waiting[i]=currentThread->tid;
+    currentThread->state=T_SLEEPING;
+    uthread_yield();
+    return 1;
   }
 }
-else
-        {/////what if some thread state is sleeping?
 
-         exit();
-       }
-
-     }
-
-
-     int
-     uthred_join(int tid)
-     {
-      if((&tTable.table[tid])->state==T_FREE)
-        return -1;
-      else
-      {
-        int i=0;
-        while((&tTable.table[tid])->waiting[i]!=-1)
-          i++;
-        (&tTable.table[tid])->waiting[i]=currentThread->tid;
-        currentThread->state=T_SLEEPING;
-        uthread_yield();
-        return 1;
-      }
-    }
-
-    void 
-    uthread_yield()
-    {
-      uthread_p newt;
-      int old=currentThread->tid;
-      int new=getNextThread(old);
-      if(new<0)
-      {
-       printf(1,"(fun uthread_yield)Cant find runnable thread");
-       exit();
-     }
-     newt=&tTable.table[new];
-
-     asm("pusha");
-     STORE_ESP(currentThread->esp);
-     if(currentThread->state==T_RUNNING)
-      currentThread->state=T_RUNNABLE;
-    LOAD_ESP(newt->esp);
-    
-
-    newt->state=T_RUNNING;
-
-    asm("popa");
-    if(currentThread->firstTime==0)
-    {
-       asm("ret");////only firest time
-       currentThread->firstTime=1;
-     }
-
-     currentThread=newt;
-     if(alarm(THREAD_QUANTA)<0)
-       {
-        printf(1,"Cant activate alarm system call");
-        exit();
-      }
-
-   }
-
-   int  uthred_self(void)
-   {
-    return currentThread->tid;
+void 
+uthread_yield()
+{
+  uthread_p newt;
+  int old=currentThread->tid;
+  int new=getNextThread(old);
+  if(new<0)
+  {
+    printf(1,"(fun uthread_yield)Cant find runnable thread");
+    exit();
   }
-// int  uthred_join(int tid);
+  newt=&tTable.table[new];
+
+  asm("pusha");
+  STORE_ESP(currentThread->esp);
+  if(currentThread->state==T_RUNNING)
+  currentThread->state=T_RUNNABLE;
+  LOAD_ESP(newt->esp);
+  newt->state=T_RUNNING;
+
+  asm("popa");
+  if(currentThread->firstTime==0)
+  {
+    asm("ret");////only first time
+    currentThread->firstTime=1;
+  }
+
+  currentThread=newt;
+  if(alarm(THREAD_QUANTA)<0)
+  {
+    printf(1,"Cant activate alarm system call");
+    exit();
+  }
+}
+
+int
+uthred_self(void)
+{
+  return currentThread->tid;
+}
