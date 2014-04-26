@@ -5,6 +5,7 @@
 #include "uthread.h"
 
 #define THREAD_QUANTA 5
+
 /********************************
         Macors which inline assembly
  ********************************/
@@ -28,7 +29,7 @@
 #define PUSH_ALL_REGISTERS() asm("pusha")
 
 //call head of stack
-#define CALL_HEAD() asm("pop %eax;" "call %eax;")
+#define CALL_HEAD() asm("pop %ecx;" "call %ecx;")
 
 /*pushes a function FUNC to the stack represented by ESP,ESP
  * and updates the stack poinetr ESP accordingly
@@ -80,7 +81,7 @@ print_stack()
 {
   int *newesp = (int*)currentThread->esp;  
   printf(1,"stack for thread %d \n",uthread_self());
-  while((newesp < (int *)currentThread->ebp))
+  while((newesp <= (int *)currentThread->ebp))
   {
     printf(1,"add:%x val:%x\n",newesp,*newesp);
     newesp++;
@@ -109,24 +110,15 @@ count_waiting(int tid)
 int
 getNextThread(int j)
 {
-  int i=j+1;
-  if(i==MAX_THREAD)
-    i=0;
-  uthread_p t=&tTable.table[i];
-  while(i!=j)
+  uthread_p t;
+  int i=j;
+  while(i!=(j+1)%MAX_THREAD)
   {
+    j=(j+1)%MAX_THREAD;
+    t=&tTable.table[j];
     if(t->state==T_RUNNABLE)
-      return i;
-    i++;
-    if(i==MAX_THREAD)
-    {
-     i=0;
-     t=&tTable.table[i];
-   }
-   else
-    t++;
-
-}
+      return j;
+  }
 return -1;
 }
 
@@ -151,7 +143,8 @@ allocThread()
   //Init all fields
   t->tid=i;
   t->stack=(char*)malloc(STACK_SIZE);
-  t->ebp=(int)t->stack+STACK_SIZE-sizeof(int);
+  //t->ebp=(int)t->stack+STACK_SIZE-sizeof(int);
+  t->ebp=(int)t->stack+STACK_SIZE;
   t->firstTime=1;
   
   for(j=0;j<MAX_THREAD;j++)
@@ -161,7 +154,7 @@ allocThread()
   }
   
   //init stack state and update pointers
-  PUSH_FUNC(t->esp,t->ebp,&uthread_exit);
+  PUSH_FUNC(t->esp,t->ebp,uthread_exit);
   
   t->state=T_UNINIT;
   
@@ -229,6 +222,7 @@ uthread_create(void (*start_func)(void *), void* arg)
 void 
 uthread_exit()
 {
+  printf(1,"called exit\n");
   int new,i;
   
   //wakeup all threads waiting for this one
@@ -306,7 +300,7 @@ void
 uthread_yield()
 {
   int new=getNextThread(currentThread->tid);
-
+  printf(1,"%d -> %d\n",currentThread->tid,new);
   if(new<0)
   {
     printf(1,"error: Cant find runnable thread (form uthread_yield)\n");
@@ -325,19 +319,24 @@ uthread_yield()
 
   //load all new thread registers and pointers
   LOAD_ESP(currentThread->esp);
+  LOAD_EBP(currentThread->ebp);
+  currentThread->state=T_RUNNING;
+  print_stack();
+  
   if(currentThread->firstTime==1)
-  {
+  {  
     currentThread->firstTime=0;
     CALL_HEAD(); //calls the head of the stack
   }
   else
-  {
+  { 
     POP_ALL_REGISTERS();
   }
   
-  currentThread->state=T_RUNNING;
+  
   //print_stack(); //debugging
 
+  
   //set new alarm clock
   if(alarm(THREAD_QUANTA)<0)
   {

@@ -200,7 +200,7 @@ sys_alarm(void)
     proc->pending = proc-> pending & ~(1 << (SIGALRM-1));
     return -1;
   }
-  
+  cprintf("*");
   //proc->pending = proc-> pending | (1 << SIGALRM);
   proc->alarm = alarm_time;
   return 0;

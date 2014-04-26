@@ -82,10 +82,12 @@ sleepingUpDate(void)
       p->iotime++;
       
     }
+    
     if(p->state == RUNNING){
       p->rtime++;
       p->quanta--;
     }
+    
     if(p->alarm>=0)
     {
       p->alarm--;
@@ -532,6 +534,7 @@ operateProcess(struct proc *p){
   {
     if((p->pending & bit )>0)
     {
+      cprintf("|%d|",i);
       if(p->handlers[i] == &def_Handler)
       {
 	def_Handler();
