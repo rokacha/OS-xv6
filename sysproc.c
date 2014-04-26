@@ -153,7 +153,7 @@ sys_signal(void)
     cprintf("err3\n");
     return -1;
   }
-  cprintf("registering signal %d as handler %d\n",signum,handler);
+  //cprintf("registering signal %d as handler %d\n",signum,handler);
   
   proc->handlers[signum-1]=(sighandler_t)handler;
 

@@ -2,17 +2,110 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
-
 #include "uthread.h"
 
+#define THREAD_QUANTA 5
+/********************************
+        Macors which inline assembly
+ ********************************/
+ 
+// Saves the value of esp to var
+#define STORE_ESP(var)  asm("movl %%esp, %0;" : "=r" ( var ))
+
+// Saves the value of ebp to var
+#define STORE_EBP(var)  asm("movl %%ebp, %0;" : "=r" ( var ))
+
+// Loads the contents of var into esp
+#define LOAD_ESP(var)   asm("movl %0, %%esp;" : : "r" ( var ))
+
+// Loads the contents of var into ebp
+#define LOAD_EBP(var)   asm("movl %0, %%ebp;" : : "r" ( var ))
+
+//Pop all registers
+#define POP_ALL_REGISTERS() asm("popa")
+
+//Push all registers
+#define PUSH_ALL_REGISTERS() asm("pusha")
+
+//call head of stack
+#define CALL_HEAD() asm("pop %eax;" "call %eax;")
+
+/*pushes a function FUNC to the stack represented by ESP,ESP
+ * and updates the stack poinetr ESP accordingly
+ *save current esp
+ *use current stack for push
+ *push exit func
+ *update current esp after push
+ *reload former stack*/
+#define PUSH_FUNC(ESP,EBP,FUNC)    asm(\
+		"movl %%esp,%%ebx;"\
+		"movl %1,%%esp;"\
+		"push %2;" \
+		"movl %%esp,%0;"\
+		"movl %%ebx,%%esp;"\
+	      : "=r" (ESP)\
+	      : "r" (EBP) , "r"(FUNC)\
+	      : "%ebx")
+
+/*pushes a stating function with its arguments to the stack ESP
+ * and updates the stack poinetr ESP accordingly
+ *save current esp
+ *use the new thread esp
+ *stores the arguments to be used
+ *stores the start_func location
+ *export new esp
+ *restore former esp*/
+#define PUSH_STARTING_FUNC(ESP,FUNC,ARG)  asm(\
+		"movl %%esp,%%eax;"\
+		"movl %3,%%esp;"\
+		"push %1;"\
+		"push %2;"\
+		"movl %%esp,%0;"\
+		"movl %%eax,%%esp;"\
+	      : "=r" (ESP)\
+	      : "r" (ARG) , "r"(FUNC),"r" (ESP)\
+	      :"%eax")
 
 static struct {
   uthread_t table[MAX_THREAD];
-  int length;
-  int current;
+
 } tTable;
 
+/*
+ * prints the stack of the currently running thread
+ * DEBUGGING purposes
+ */
+void
+print_stack()
+{
+  int *newesp = (int*)currentThread->esp;  
+  printf(1,"stack for thread %d \n",uthread_self());
+  while((newesp < (int *)currentThread->ebp))
+  {
+    printf(1,"add:%x val:%x\n",newesp,*newesp);
+    newesp++;
+  }
+}
 
+/*
+ *Count the number of threads that thread tid is waiting for
+ */
+int
+count_waiting(int tid)
+{
+  int count=0;
+  int i;
+  for (i=0; i<MAX_THREAD ; i++)
+  {
+    count += tTable.table[tid].waitingFor[i];
+  }
+  return count;
+}
+
+/*
+ * returns the next thread in line to run
+ * if none exists it returns -1
+ */
 int
 getNextThread(int j)
 {
@@ -37,14 +130,17 @@ getNextThread(int j)
 return -1;
 }
 
-
+/*
+ * allocates a spot for a new thread
+ * if none exist it returns NULL
+ */
 static uthread_p
 allocThread()
 {
   int i,j;
   uthread_p t;
   
-  for (t=tTable.table,i=0 ; t <= &tTable.table[MAX_THREAD]; t++,i++)// <= should be < ??
+  for (t=tTable.table,i=0 ; t < &tTable.table[MAX_THREAD]; t++,i++)
   {
     if(t->state==T_FREE)
       goto found;
@@ -52,38 +148,49 @@ allocThread()
   return 0;
   
   found:
-  
+  //Init all fields
   t->tid=i;
   t->stack=(char*)malloc(STACK_SIZE);
-  t->esp=(int)t->stack;
-  t->ebp=(int)t->stack;
-  t->firstTime=0;
-  for(j=0;j<64;j++)
+  t->ebp=(int)t->stack+STACK_SIZE-sizeof(int);
+  t->firstTime=1;
+  
+  for(j=0;j<MAX_THREAD;j++)
   {
-    t->waiting[j]=-1;
+    t->waitingFor[j]=-1;
+    t->waitedOn[j]=-1;
   }
-  asm("movl %1,%%esp;" "push %2;" "movl %%esp,%0;" //pushes the uthread_exit func as return address
-    : "=r" (t->esp) 
-    : "r" (t->ebp) , "r"(uthread_exit)
-    );
+  
+  //init stack state and update pointers
+  PUSH_FUNC(t->esp,t->ebp,&uthread_exit);
+  
   t->state=T_UNINIT;
+  
+    
   return t;
 }
 
+/*
+ * initializes all the uthread structures
+ */
 void 
 uthread_init()
-{  
-  tTable.length=0;
-  tTable.current=0;
-  uthread_p mainT = allocThread(); //needed to allocate the main thread !!!!!!
-  asm("movl %%ebp,%0;" "movl %%esp,%1;" //get current thread ebp and esp
-    : "=r" (mainT->ebp) ,"=r"(mainT->esp)    
-    );
-  /*moves stack to mainT's stack
-  /stacks grow backwards so we start from esp and finsh at ebp*/
-  memmove(mainT->stack , (void*)mainT->esp , mainT->ebp - mainT->esp);
-  mainT->state = T_RUNNABLE;
-  currentThread=mainT;
+{   
+  //Initialize table
+  int i;
+  
+  for(i=0;i<MAX_THREAD;i++)
+  {
+    tTable.table[i].state=T_FREE;
+  }
+  
+ //allocate the main thread
+  currentThread = allocThread(); 
+  
+  STORE_EBP(currentThread->ebp);
+  STORE_ESP(currentThread->esp);
+  
+  currentThread->state = T_RUNNING;
+  
   if(signal(SIGALRM,uthread_yield)<0)
   {
     printf(1,"Cant register the alarm signal");
@@ -97,115 +204,151 @@ uthread_init()
   
 }
 
+/*
+ * creates a new thread that receives a pointer
+ * to a function from which to start and poinetr to arguments
+ * to that function
+ * if none can be created it returns -1;
+ */
 int  
 uthread_create(void (*start_func)(void *), void* arg)
 {
   uthread_p t = allocThread();
-  
-  asm("push %1;"  //stores the arguments to be used
-      "push %2;"  //stores the start_func location
-      "movl %%esp,%0;"
-      : "=r" (t->esp)
-      : "r" (arg) , "r"(start_func)
-      );
-  t->state= T_RUNNABLE;
-  
+  if(t==0)
+    return -1;
+  // printf(1,"creating a new thresd with start func %d and arg %d\n",start_func,arg);  
+  PUSH_STARTING_FUNC(t->esp,start_func,arg);
+  t->state = T_RUNNABLE;
   return t->tid;
 }
 
+/*
+ * closes the running thread, wakes up all
+ * the threads waiting for this one (if they require waking up)
+ */
 void 
 uthread_exit()
 {
-  uthread_p newt;
-  int old=currentThread->tid;
+  int new,i;
   
-  int i=0;
-  while(currentThread->waiting[i]!=-1)
+  //wakeup all threads waiting for this one
+  for(i=0;i<MAX_THREAD;i++)
   {
-    (&tTable.table[currentThread->waiting[i]])->state=T_RUNNABLE;
-    i++;
+   if(currentThread->waitedOn[i]==1)
+   {
+     tTable.table[i].waitingFor[currentThread->tid]=0; //release thread i from waiting
+     currentThread->waitedOn[i]=0; //not necessary maybe
+     
+     if(count_waiting(i)==0) //thread i is not waiting for no one
+     {
+       tTable.table[i].state=T_RUNNABLE;
+     }
+   }
   }
+  
+  //pick next thread
+  new=getNextThread(currentThread->tid);
+  
+  //release all resources and zero all fields
+  free(currentThread->stack);
   currentThread->tid=-1;
   currentThread->esp=-1;
   currentThread->ebp=-1;
-  free(currentThread->stack);
+  currentThread->stack=0;
+  currentThread->firstTime=1;
   currentThread->state=T_FREE;
-  currentThread->firstTime=0;
-  int new=getNextThread(old);
+  
+  //load new thread
   if(new>=0)
   {
-   newt=&tTable.table[new];
-   newt->state=T_RUNNING;
-   LOAD_ESP(newt->esp);
-   LOAD_EBP(newt->ebp);
-   asm("popa");
-   currentThread=newt;
-   if(alarm(THREAD_QUANTA)<0)
-   {
-    printf(1,"Cant activate alarm system call");
-    exit();
-   }
-  }
-  else
-    {/////what if some thread state is sleeping?
+    currentThread=&tTable.table[new];
+    currentThread->state=T_RUNNING;
+    LOAD_ESP(currentThread->esp);
+    LOAD_EBP(currentThread->ebp);
+    POP_ALL_REGISTERS();
+    
+    //set new alarm clock
+    if(alarm(THREAD_QUANTA)<0)
+    {
+      printf(1,"Cant activate alarm system call");
       exit();
     }
+  }
+  
+//   else  /////what if some thread is sleeping?
+//       exit();
 }
 
+/*
+ * causes this thread to wait for the finish of another thread
+ */
 int
-uthred_join(int tid)
+uthread_join(int tid)
 {
   if((&tTable.table[tid])->state==T_FREE)
     return -1;
+  
   else
   {
-    int i=0;
-    while((&tTable.table[tid])->waiting[i]!=-1)
-      i++;
-    (&tTable.table[tid])->waiting[i]=currentThread->tid;
+    tTable.table[tid].waitingFor[currentThread->tid]=1;
+    currentThread->waitedOn[tid]=1;
+    
     currentThread->state=T_SLEEPING;
     uthread_yield();
     return 1;
   }
 }
 
+/*
+ * yields the run-time of the current thread to another thread
+ */
 void 
 uthread_yield()
 {
-  uthread_p newt;
-  int old=currentThread->tid;
-  int new=getNextThread(old);
+  int new=getNextThread(currentThread->tid);
+
   if(new<0)
   {
-    printf(1,"(fun uthread_yield)Cant find runnable thread");
+    printf(1,"error: Cant find runnable thread (form uthread_yield)\n");
     exit();
   }
-  newt=&tTable.table[new];
-
-  asm("pusha");
+ 
+ //store all leaving thread registers and pointers
+  PUSH_ALL_REGISTERS();
   STORE_ESP(currentThread->esp);
-  if(currentThread->state==T_RUNNING)
-  currentThread->state=T_RUNNABLE;
-  LOAD_ESP(newt->esp);
-  newt->state=T_RUNNING;
+  
+  //change thread state
+  if(currentThread->state==T_RUNNING) //might be sleeping from join operation
+    currentThread->state=T_RUNNABLE;
 
-  asm("popa");
-  if(currentThread->firstTime==0)
+  currentThread=&tTable.table[new];
+
+  //load all new thread registers and pointers
+  LOAD_ESP(currentThread->esp);
+  if(currentThread->firstTime==1)
   {
-    asm("ret");////only first time
-    currentThread->firstTime=1;
+    currentThread->firstTime=0;
+    CALL_HEAD(); //calls the head of the stack
   }
+  else
+  {
+    POP_ALL_REGISTERS();
+  }
+  
+  currentThread->state=T_RUNNING;
+  //print_stack(); //debugging
 
-  currentThread=newt;
+  //set new alarm clock
   if(alarm(THREAD_QUANTA)<0)
   {
     printf(1,"Cant activate alarm system call");
     exit();
   }
+
 }
 
 int
-uthred_self(void)
+uthread_self(void)
 {
   return currentThread->tid;
 }
