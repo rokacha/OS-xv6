@@ -15,11 +15,17 @@
 // Saves the value of ebp to var
 #define STORE_EBP(var)  asm("movl %%ebp, %0;" : "=r" ( var ))
 
+// Saves the value of eip to var
+//#define STORE_EIP(var)  asm("movl %%eip, %0;" : "=r" ( var ))
+
 // Loads the contents of var into esp
 #define LOAD_ESP(var)   asm("movl %0, %%esp;" : : "r" ( var ))
 
 // Loads the contents of var into ebp
 #define LOAD_EBP(var)   asm("movl %0, %%ebp;" : : "r" ( var ))
+
+//jmp to address
+#define JMP(var) asm("jmp *%0": : "r" (var))
 
 //Pop all registers
 #define POP_ALL_REGISTERS() asm("popa")
@@ -71,6 +77,7 @@ static struct {
 
 } tTable;
 
+
 /*
  * prints the stack of the currently running thread
  * DEBUGGING purposes
@@ -79,12 +86,15 @@ void
 print_stack()
 {
   int *newesp = (int*)currentThread->esp;  
-  printf(1,"stack for thread %d \n",uthread_self());
+  if(currentThread->tid==1){
+  printf(1,"stack for thread %d \n",currentThread->tid);
   while((newesp < (int *)currentThread->ebp))
   {
-    printf(1,"add:%x val:%x\n",newesp,*newesp);
+    printf(1,"add:%x ",newesp);
+      printf(1,"val:%x\n",*newesp);
     newesp++;
   }
+}
 }
 
 /*
@@ -150,20 +160,27 @@ allocThread()
   found:
   //Init all fields
   t->tid=i;
-  t->stack=(char*)malloc(STACK_SIZE);
-  //t->ebp=(int)t->stack+STACK_SIZE-sizeof(int);
-  t->ebp=(int)t->stack+STACK_SIZE;
-  t->firstTime=1;
-  
+  if(i==0)
+  {
+    STORE_ESP(t->esp);
+    STORE_EBP(t->ebp);
+    t->firstTime=0;
+  }
+  else
+  {
+    t->stack=(char*)malloc(STACK_SIZE);
+    //t->ebp=(int)t->stack+STACK_SIZE-sizeof(int);
+    t->ebp=(int)t->stack+STACK_SIZE;
+    t->firstTime=1;
+    //init stack state and update pointers
+    //PUSH_FUNC(t->esp,t->ebp,uthread_exit);
+  }
   for(j=0;j<MAX_THREAD;j++)
   {
     t->waitingFor[j]=-1;
     t->waitedOn[j]=-1;
   }
-  
-  //init stack state and update pointers
-  PUSH_FUNC(t->esp,t->ebp,uthread_exit);
-  
+   
   t->state=T_UNINIT;
   
     
@@ -173,7 +190,7 @@ allocThread()
 /*
  * initializes all the uthread structures
  */
-void 
+int
 uthread_init()
 {   
   //Initialize table
@@ -185,11 +202,9 @@ uthread_init()
   }
   
  //allocate the main thread
-  currentThread = allocThread(); 
-  
-  STORE_EBP(currentThread->ebp);
-  STORE_ESP(currentThread->esp);
-  
+  currentThread = allocThread();
+  if(currentThread==0)
+    return -1;
   currentThread->state = T_RUNNING;
   
   if(signal(SIGALRM,uthread_yield)<0)
@@ -197,14 +212,22 @@ uthread_init()
     printf(1,"Cant register the alarm signal");
     exit();
   }
+
   if(alarm(THREAD_QUANTA)<0)
   {
     printf(1,"Cant activate alarm system call");
     exit();
   }
-  
+  return 0;
 }
 
+void
+wrap_func()
+{
+  asm("push %0;""call %1;"::"r"(currentThread->arguments),"r"(currentThread->func));
+  //currentThread->start_func(currentThread->arg);
+  uthread_exit();
+}
 /*
  * creates a new thread that receives a pointer
  * to a function from which to start and poinetr to arguments
@@ -217,8 +240,13 @@ uthread_create(void (*start_func)(void *), void* arg)
   uthread_p t = allocThread();
   if(t==0)
     return -1;
+  //print_stack();
   // printf(1,"creating a new thresd with start func %d and arg %d\n",start_func,arg);  
-  PUSH_STARTING_FUNC(t->esp,start_func,arg);
+  t->func=(uint)start_func;
+  //printf(1,"--%x--\n",func);
+  t->arguments=(uint)arg;
+  
+  //PUSH_STARTING_FUNC(t->esp,start_func,arg);
   t->state = T_RUNNABLE;
   return t->tid;
 }
@@ -256,6 +284,10 @@ uthread_exit()
   currentThread->tid=-1;
   currentThread->esp=-1;
   currentThread->ebp=-1;
+  
+  
+  currentThread->func=0;
+  currentThread->arguments=0;
   currentThread->stack=0;
   currentThread->firstTime=1;
   currentThread->state=T_FREE;
@@ -268,6 +300,7 @@ uthread_exit()
     LOAD_ESP(currentThread->esp);
     LOAD_EBP(currentThread->ebp);
     POP_ALL_REGISTERS();
+   // LOAD_EIP(currentThread->eip);
     
     //set new alarm clock
     if(alarm(THREAD_QUANTA)<0)
@@ -308,53 +341,56 @@ void
 uthread_yield()
 {
   int new=getNextThread(currentThread->tid);
-  printf(1,"%d -> %d\n",currentThread->tid,new);
-  if(new<0)
+  if(new==-1)
   {
-    printf(1,"error: Cant find runnable thread (form uthread_yield)\n");
-    exit();
-  }
- 
- //store all leaving thread registers and pointers
-  PUSH_ALL_REGISTERS();
-  STORE_ESP(currentThread->esp);
-  
-  //change thread state
-  if(currentThread->state==T_RUNNING) //might be sleeping from join operation
-    currentThread->state=T_RUNNABLE;
-
-  currentThread=&tTable.table[new];
-
-  //load all new thread registers and pointers
-  LOAD_ESP(currentThread->esp);
-  LOAD_EBP(currentThread->ebp);
-  
-  print_stack();
-  
-  //set new alarm clock
-  if(alarm(THREAD_QUANTA)<0)
-  {
-    printf(1,"Cant activate alarm system call");
-    exit();
-  }
-  
-  print_stack();
-  
-  if(currentThread->firstTime==1)
-  {
-    currentThread->firstTime=0;
-    CALL_HEAD(); //calls the head of the stack
+    printf(1,"(uthread_yield) there no other runneble theard, currentThread keep running\n");
+    if(alarm(THREAD_QUANTA)<0)
+        {
+          printf(1,"Cant activate alarm system call\n");
+          exit();
+        } 
   }
   else
   {
-    POP_ALL_REGISTERS();
+
+     //store all leaving thread registers and pointers
+      
+      PUSH_ALL_REGISTERS();
+      STORE_ESP(currentThread->esp);
+      
+      //change thread state
+      if(currentThread->state==T_RUNNING) //might be sleeping from join operation
+        currentThread->state=T_RUNNABLE;
+
+      currentThread=&tTable.table[new];
+
+      //load all new thread registers and pointers
+      LOAD_ESP(currentThread->esp);
+      LOAD_EBP(currentThread->ebp);
+      //printf(1,"1");
+      // if(alarm(THREAD_QUANTA)<0)
+      // {
+      //   printf(1,"Cant activate alarm system call\n");
+      //   exit();
+      // }  
+      //printf(1,"2");
+      currentThread->state=T_RUNNING;
+      
+      //print_stack();
+      if(currentThread->firstTime==1)
+      {
+        
+        currentThread->firstTime=0;
+        wrap_func();
+      }
+      else
+      {
+        POP_ALL_REGISTERS();
+        //JMP(currentThread->eip);
+      }
+      
   }
-  
-  currentThread->state=T_RUNNING;
-  //print_stack(); //debugging
-
-  
-
+ 
 
 }
 

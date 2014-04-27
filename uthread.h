@@ -9,13 +9,17 @@ typedef struct uthread uthread_t, *uthread_p;
 struct uthread *currentThread;
 struct uthread {
   int	tid;			/* thread's id */
-  int	esp;			/* current stack pointer */
-  int	ebp;			/* current base pointer */
+  uint	esp;			/* current stack pointer */
+  uint	ebp;			/* current base pointer */
+  //uint eip;
   char	*stack;			/* the thread's stack */
   uthread_state	state;		/* running, runnable, sleeping */
   int firstTime;		/* is the thread running for the first time */
+  uint func;
+  uint arguments;
   int waitedOn[MAX_THREAD];	/* threads that are waiting for this thread */
   int waitingFor[MAX_THREAD];	/* threads that this thread is waiting for */
+
 };
 
 struct binary_semaphore
@@ -30,7 +34,7 @@ struct binary_semaphore
 };
 
 //uthred.c
-void uthread_init(void);
+int uthread_init(void);
 int  uthread_create(void (*start_func)(void *), void* arg);
 void uthread_exit(void);
 void uthread_yield(void);

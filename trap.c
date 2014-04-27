@@ -113,11 +113,11 @@ trap(struct trapframe *tf)
     {
       yield();
     }
-    else
+   /* else
     {
       if(proc->quanta==0)
         yield();
-    }
+    }*/
   }
 
   // Check if the process has been killed since we yielded
