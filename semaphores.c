@@ -10,7 +10,7 @@ void
 acquireSemaphore(struct binary_semaphore *sem)
 {
   int j;
-  int i = uthred_self();
+  int i = uthread_self();
   
   sem->choosing[i]=1;
   sem->number[i] = 1 + sem->maximalNum ;
@@ -30,7 +30,7 @@ acquireSemaphore(struct binary_semaphore *sem)
 void
 releaseSemaphore(struct binary_semaphore *sem)
 {
-  int i= uthred_self();
+  int i= uthread_self();
   sem->number[i]=0;
 }
 
@@ -42,7 +42,7 @@ binary_semaphore_init(struct binary_semaphore* semaphore, int value)
   if(value)
     semaphore->thread=-1;
   else 
-    semaphore->thread = uthred_self();
+    semaphore->thread = uthread_self();
   
   semaphore->locked = ( value == 0 );
   
@@ -55,7 +55,7 @@ binary_semaphore_down(struct binary_semaphore* semaphore)
 {
   acquireSemaphore(semaphore);
   
-  int i= uthred_self();
+  int i= uthread_self();
   
   while( semaphore->locked==1)
   {
@@ -78,7 +78,7 @@ binary_semaphore_up(struct binary_semaphore* semaphore)
 {
   acquireSemaphore(semaphore);
   
-  int i= uthred_self();
+  int i= uthread_self();
   
   if( semaphore->locked == 1 && semaphore->thread == i)
   {

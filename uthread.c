@@ -5,18 +5,12 @@
 #include "uthread.h"
 
 #define THREAD_QUANTA 5
-/********************************
-        Macors which inline assembly
- ********************************/
- 
+
 // Saves the value of esp to var
 #define STORE_ESP(var)  asm("movl %%esp, %0;" : "=r" ( var ))
 
 // Saves the value of ebp to var
 #define STORE_EBP(var)  asm("movl %%ebp, %0;" : "=r" ( var ))
-
-// Saves the value of eip to var
-//#define STORE_EIP(var)  asm("movl %%eip, %0;" : "=r" ( var ))
 
 // Loads the contents of var into esp
 #define LOAD_ESP(var)   asm("movl %0, %%esp;" : : "r" ( var ))
@@ -24,53 +18,22 @@
 // Loads the contents of var into ebp
 #define LOAD_EBP(var)   asm("movl %0, %%ebp;" : : "r" ( var ))
 
-//jmp to address
-#define JMP(var) asm("jmp *%0": : "r" (var))
-
 //Pop all registers
 #define POP_ALL_REGISTERS() asm("popa")
 
 //Push all registers
 #define PUSH_ALL_REGISTERS() asm("pusha")
 
-//call head of stack
-#define CALL_HEAD() asm("pop %eax;" "call %eax;")
+//pop top of stack and use it to goto function
+#define POP_AND_RET() asm("pop %ebp;" "ret;")
 
-/*pushes a function FUNC to the stack represented by ESP,ESP
- * and updates the stack poinetr ESP accordingly
- *save current esp
- *use current stack for push
- *push exit func
- *update current esp after push
- *reload former stack*/
-#define PUSH_FUNC(ESP,EBP,FUNC)    asm(\
-		"movl %%esp,%%ebx;"\
-		"movl %1,%%esp;"\
-		"push %2;" \
-		"movl %%esp,%0;"\
-		"movl %%ebx,%%esp;"\
-	      : "=r" (ESP)\
-	      : "r" (EBP) , "r"(FUNC)\
-	      : "%ebx")
-
-/*pushes a stating function with its arguments to the stack ESP
- * and updates the stack poinetr ESP accordingly
- *save current esp
- *use the new thread esp
- *stores the arguments to be used
- *stores the start_func location
- *export new esp
- *restore former esp*/
-#define PUSH_STARTING_FUNC(ESP,FUNC,ARG)  asm(\
-		"movl %%esp,%%eax;"\
-		"movl %3,%%esp;"\
-		"push %1;"\
-		"push %2;"\
-		"movl %%esp,%0;"\
-		"movl %%eax,%%esp;"\
-	      : "=r" (ESP)\
-	      : "r" (ARG) , "r"(FUNC),"r" (ESP)\
-	      :"%eax")
+//Used to push a function to a specific stack
+#define PUSH_FUNC(ESP,EBP,FUNC) asm(\
+      "push %1;"\
+      "push %2;"\
+      "movl %%esp,%0;"\
+      :"=r"(ESP)\
+      :"r"(FUNC),"r"(EBP));
 
 static struct {
   uthread_t table[MAX_THREAD];
@@ -160,7 +123,7 @@ allocThread()
   found:
   //Init all fields
   t->tid=i;
-  if(i==0)
+  if(i==0) //main thread init
   {
     STORE_ESP(t->esp);
     STORE_EBP(t->ebp);
@@ -169,11 +132,9 @@ allocThread()
   else
   {
     t->stack=(char*)malloc(STACK_SIZE);
-    //t->ebp=(int)t->stack+STACK_SIZE-sizeof(int);
     t->ebp=(int)t->stack+STACK_SIZE;
+    t->esp=t->ebp;
     t->firstTime=1;
-    //init stack state and update pointers
-    //PUSH_FUNC(t->esp,t->ebp,uthread_exit);
   }
   for(j=0;j<MAX_THREAD;j++)
   {
@@ -205,14 +166,15 @@ uthread_init()
   currentThread = allocThread();
   if(currentThread==0)
     return -1;
-  currentThread->state = T_RUNNING;
   
+  currentThread->state = T_RUNNING;
+  //register uthread_yield as signal handler for alarm
   if(signal(SIGALRM,uthread_yield)<0)
   {
     printf(1,"Cant register the alarm signal");
     exit();
   }
-
+  //set new alarm clock
   if(alarm(THREAD_QUANTA)<0)
   {
     printf(1,"Cant activate alarm system call");
@@ -224,8 +186,7 @@ uthread_init()
 void
 wrap_func()
 {
-  asm("push %0;""call %1;"::"r"(currentThread->arguments),"r"(currentThread->func));
-  //currentThread->start_func(currentThread->arg);
+  currentThread->func(currentThread->arguments);
   uthread_exit();
 }
 /*
@@ -237,17 +198,22 @@ wrap_func()
 int  
 uthread_create(void (*start_func)(void *), void* arg)
 {
+  uint local_esp;
   uthread_p t = allocThread();
   if(t==0)
     return -1;
-  //print_stack();
-  // printf(1,"creating a new thresd with start func %d and arg %d\n",start_func,arg);  
-  t->func=(uint)start_func;
-  //printf(1,"--%x--\n",func);
-  t->arguments=(uint)arg;
+
+  t->func=start_func;
+  t->arguments=arg;
   
-  //PUSH_STARTING_FUNC(t->esp,start_func,arg);
+  //push starting func and return value on the right stack
+  STORE_ESP(local_esp);
+  LOAD_ESP(t->esp);
+  PUSH_FUNC(t->esp,t->ebp,wrap_func);
+  LOAD_ESP(local_esp);
+  
   t->state = T_RUNNABLE;
+  
   return t->tid;
 }
 
@@ -258,7 +224,6 @@ uthread_create(void (*start_func)(void *), void* arg)
 void 
 uthread_exit()
 {
-  printf(1,"called exit\n");
   int new,i;
   
   //wakeup all threads waiting for this one
@@ -284,8 +249,6 @@ uthread_exit()
   currentThread->tid=-1;
   currentThread->esp=-1;
   currentThread->ebp=-1;
-  
-  
   currentThread->func=0;
   currentThread->arguments=0;
   currentThread->stack=0;
@@ -299,8 +262,6 @@ uthread_exit()
     currentThread->state=T_RUNNING;
     LOAD_ESP(currentThread->esp);
     LOAD_EBP(currentThread->ebp);
-    POP_ALL_REGISTERS();
-   // LOAD_EIP(currentThread->eip);
     
     //set new alarm clock
     if(alarm(THREAD_QUANTA)<0)
@@ -308,10 +269,17 @@ uthread_exit()
       printf(1,"Cant activate alarm system call");
       exit();
     }
+    
+    if(currentThread->firstTime==1)
+    {
+      currentThread->firstTime=0;
+      POP_AND_RET();
+    }
+    else
+    {  
+    POP_ALL_REGISTERS();
+    }
   }
-  
-//   else  /////what if some thread is sleeping?
-//       exit();
 }
 
 /*
@@ -327,7 +295,6 @@ uthread_join(int tid)
   {
     tTable.table[tid].waitingFor[currentThread->tid]=1;
     currentThread->waitedOn[tid]=1;
-    
     currentThread->state=T_SLEEPING;
     uthread_yield();
     return 1;
@@ -343,55 +310,46 @@ uthread_yield()
   int new=getNextThread(currentThread->tid);
   if(new==-1)
   {
-    printf(1,"(uthread_yield) there no other runneble theard, currentThread keep running\n");
     if(alarm(THREAD_QUANTA)<0)
-        {
-          printf(1,"Cant activate alarm system call\n");
-          exit();
-        } 
+    {
+      printf(1,"Cant activate alarm system call\n");
+      exit();
+    } 
   }
   else
   {
+    //store all leaving thread registers and pointers
+    PUSH_ALL_REGISTERS();
+    STORE_ESP(currentThread->esp);
+    STORE_EBP(currentThread->ebp);
+    
+    //change thread state
+    if(currentThread->state==T_RUNNING) //might be sleeping from join operation
+      currentThread->state=T_RUNNABLE;
 
-     //store all leaving thread registers and pointers
-      
-      PUSH_ALL_REGISTERS();
-      STORE_ESP(currentThread->esp);
-      
-      //change thread state
-      if(currentThread->state==T_RUNNING) //might be sleeping from join operation
-        currentThread->state=T_RUNNABLE;
+    currentThread=&tTable.table[new];
 
-      currentThread=&tTable.table[new];
-
-      //load all new thread registers and pointers
-      LOAD_ESP(currentThread->esp);
-      LOAD_EBP(currentThread->ebp);
-      //printf(1,"1");
-      // if(alarm(THREAD_QUANTA)<0)
-      // {
-      //   printf(1,"Cant activate alarm system call\n");
-      //   exit();
-      // }  
-      //printf(1,"2");
-      currentThread->state=T_RUNNING;
-      
-      //print_stack();
-      if(currentThread->firstTime==1)
-      {
-        
-        currentThread->firstTime=0;
-        wrap_func();
-      }
-      else
-      {
-        POP_ALL_REGISTERS();
-        //JMP(currentThread->eip);
-      }
-      
+    //load all new thread registers and pointers
+    LOAD_ESP(currentThread->esp);
+    LOAD_EBP(currentThread->ebp);
+    //set new alram clock
+    if(alarm(THREAD_QUANTA)<0)
+    {
+      printf(1,"Cant activate alarm system call\n");
+      exit();
+    }  
+    currentThread->state=T_RUNNING;
+    
+    if(currentThread->firstTime==1)
+    {
+    currentThread->firstTime=0;
+    POP_AND_RET();
+    }
+    else
+    {
+      POP_ALL_REGISTERS();
+    }
   }
- 
-
 }
 
 int

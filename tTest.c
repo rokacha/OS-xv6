@@ -4,35 +4,35 @@
 #include "fs.h"
 #include "uthread.h"
 
-  // void
-  // printT()
-  // {
-  // int a = uthread_self();
+  void
+  printT()
+  {
+  int a = uthread_self();
 
-  // printf(1,"-%d-",a);
-  // }
+  printf(1,"-%d-",a);
+  }
 
-  // int
-  // main(int argc, char *argv[])
-  // {
+  int
+  main(int argc, char *argv[])
+  {
 
 
-  // int i;
-  // uthread_init();
-  // for (i=0; i<60 ; i++)
-  // {
-  //   uthread_create(printT,0);  
+  int i;
+  uthread_init();
+  for (i=0; i<60 ; i++)
+  {
+    uthread_create(printT,0);  
     
-  // }
+  }
 
-  // uthread_yield();
-  // //   while(1)
-  // //   {};
+  //uthread_yield();
+     while(1)
+     {};
 
-  // exit();
-  // return 0;
-  // }
-
+  exit();
+  return 0;
+  }
+/*
 void 
 test(void *t){
   int i = 0;
@@ -49,13 +49,14 @@ int
 main(int argc,char** argv)
 {
     uthread_init();
-    
-    int tid = uthread_create(test, (void *) 1);
+    int a =1;
+    int b =2;
+    int tid = uthread_create(test, &a);
     printf(1,"created 1\n");
     if (!tid)
 	    goto out_err;
     
-    tid = uthread_create(test, (void *) 2);
+    tid = uthread_create(test, &b);
     printf(1,"created 2\n");
     if (!tid)
 	    goto out_err;
@@ -69,4 +70,4 @@ main(int argc,char** argv)
 	out_err:
 	printf(1,"Faild to create thread, we go bye bye\n");
 	exit();
-}
+}*/
