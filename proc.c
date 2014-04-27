@@ -534,7 +534,7 @@ operateProcess(struct proc *p){
   {
     if((p->pending & bit )>0)
     {
-      cprintf("|%d|",i);
+      
       if(p->handlers[i] == &def_Handler)
       {
 	def_Handler();

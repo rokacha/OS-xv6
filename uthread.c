@@ -5,7 +5,6 @@
 #include "uthread.h"
 
 #define THREAD_QUANTA 5
-
 /********************************
         Macors which inline assembly
  ********************************/
@@ -29,7 +28,7 @@
 #define PUSH_ALL_REGISTERS() asm("pusha")
 
 //call head of stack
-#define CALL_HEAD() asm("pop %ecx;" "call %ecx;")
+#define CALL_HEAD() asm("pop %eax;" "call %eax;")
 
 /*pushes a function FUNC to the stack represented by ESP,ESP
  * and updates the stack poinetr ESP accordingly
@@ -81,7 +80,7 @@ print_stack()
 {
   int *newesp = (int*)currentThread->esp;  
   printf(1,"stack for thread %d \n",uthread_self());
-  while((newesp <= (int *)currentThread->ebp))
+  while((newesp < (int *)currentThread->ebp))
   {
     printf(1,"add:%x val:%x\n",newesp,*newesp);
     newesp++;
@@ -110,15 +109,24 @@ count_waiting(int tid)
 int
 getNextThread(int j)
 {
-  uthread_p t;
-  int i=j;
-  while(i!=(j+1)%MAX_THREAD)
+  int i=j+1;
+  if(i==MAX_THREAD)
+    i=0;
+  uthread_p t=&tTable.table[i];
+  while(i!=j)
   {
-    j=(j+1)%MAX_THREAD;
-    t=&tTable.table[j];
     if(t->state==T_RUNNABLE)
-      return j;
-  }
+      return i;
+    i++;
+    if(i==MAX_THREAD)
+    {
+     i=0;
+     t=&tTable.table[i];
+   }
+   else
+    t++;
+
+}
 return -1;
 }
 
@@ -320,22 +328,8 @@ uthread_yield()
   //load all new thread registers and pointers
   LOAD_ESP(currentThread->esp);
   LOAD_EBP(currentThread->ebp);
-  currentThread->state=T_RUNNING;
+  
   print_stack();
-  
-  if(currentThread->firstTime==1)
-  {  
-    currentThread->firstTime=0;
-    CALL_HEAD(); //calls the head of the stack
-  }
-  else
-  { 
-    POP_ALL_REGISTERS();
-  }
-  
-  
-  //print_stack(); //debugging
-
   
   //set new alarm clock
   if(alarm(THREAD_QUANTA)<0)
@@ -343,6 +337,24 @@ uthread_yield()
     printf(1,"Cant activate alarm system call");
     exit();
   }
+  
+  print_stack();
+  
+  if(currentThread->firstTime==1)
+  {
+    currentThread->firstTime=0;
+    CALL_HEAD(); //calls the head of the stack
+  }
+  else
+  {
+    POP_ALL_REGISTERS();
+  }
+  
+  currentThread->state=T_RUNNING;
+  //print_stack(); //debugging
+
+  
+
 
 }
 
