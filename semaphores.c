@@ -4,34 +4,32 @@
 #include "fs.h"
 #include "uthread.h"
 
-
+static inline uint
+xchg(volatile uint *addr, uint newval)
+{
+  uint result;
+  
+  // The + in "+m" denotes a read-modify-write operand.
+  asm volatile("lock; xchgl %0, %1" :
+               "+m" (*addr), "=a" (result) :
+               "1" (newval) :
+               "cc");
+  return result;
+}
 
 void
 acquireSemaphore(struct binary_semaphore *sem)
 {
-  int j;
-  int i = uthread_self();
-  
-  sem->choosing[i]=1;
-  sem->number[i] = 1 + sem->maximalNum ;
-  sem->choosing[i]=0;
-  
-  for (j=0;j<MAX_THREAD;j++)
+  while(xchg(&sem->taken, 1) == 1) 
   {
-    while(sem->init==0 ||
-	  !(sem->choosing[j]=0) ||
-	  !((sem->number[j]=0) || (sem->number[j] >= sem->number[i])))
-    {
-      uthread_yield();  //for not wasting process cpu-time
-    }
+    uthread_yield();
   }
 }
 
 void
 releaseSemaphore(struct binary_semaphore *sem)
 {
-  int i= uthread_self();
-  sem->number[i]=0;
+  sem->taken=0;
 }
 
 void
@@ -39,12 +37,12 @@ binary_semaphore_init(struct binary_semaphore* semaphore, int value)
 {
   semaphore->init=0;
   
-  if(value)
+  if(value==1)
     semaphore->thread=-1;
   else 
     semaphore->thread = uthread_self();
   
-  semaphore->locked = ( value == 0 );
+  semaphore->locked = 1 - value;
   
   semaphore->init=1;
   
@@ -60,10 +58,6 @@ binary_semaphore_down(struct binary_semaphore* semaphore)
   while( semaphore->locked==1)
   {
       releaseSemaphore(semaphore);
-      //starvation freedom is guaranteed only if thread scheduling is fair
-      //possible to add a function to send threads to sleep instead
-      //and wake them up again when calling up on the semaphore
-      //this also requires a queue to be added to the semaphore struct
       uthread_yield();  
       acquireSemaphore(semaphore);
   }

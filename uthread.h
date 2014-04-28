@@ -14,8 +14,8 @@ struct uthread {
   char	*stack;			/* the thread's stack */
   uthread_state	state;		/* running, runnable, sleeping */
   int firstTime;		/* is the thread running for the first time */
-  void (*func)(void*);
-  void *arguments;
+  void (*func)(void*); /*starting function of the thread*/
+  void *arguments;  /*arguments for the starting function*/
   int waitedOn[MAX_THREAD];	/* threads that are waiting for this thread */
   int waitingFor[MAX_THREAD];	/* threads that this thread is waiting for */
 
@@ -24,13 +24,13 @@ struct uthread {
 struct binary_semaphore
 {
   uint locked; 				//is the semaphore locked
-  int thread;				//the holding thread
+  int thread;				 //the holding thread
   uint init;
-
+  uint taken;
   //synchronizing fields (using Lamport’s bakery algorithm)
-  uint choosing[MAX_THREAD];
-  int number[MAX_THREAD] ;
-  int maximalNum;
+  // uint choosing[MAX_THREAD];
+  // int number[MAX_THREAD] ;
+  // int maximalNum;
 };
 
 //uthred.c

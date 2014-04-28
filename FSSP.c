@@ -122,13 +122,9 @@ initNext()
 
 void func(void * args)
 {
-  int i;
-  int * a = args;
-  int state[n];
-  for (i=0;i<n;i++)
-  {
-    state[i]=*(a+i);
-  }
+  //int i;
+  int * state = args;
+  //int state[n];
   int nextstate;
   int tid=uthread_self();
   while(state[tid]!=5)
@@ -143,12 +139,12 @@ void func(void * args)
     {
       if(tid==(n-1))
       {
-	nextstate=next[state[tid]][state[tid-1]][4];
-	binary_semaphore_up(&sem2);
+	     nextstate=next[state[tid]][state[tid-1]][4];
+	     binary_semaphore_up(&sem2);
       }
       else
       {
-	nextstate=next[state[tid]][state[tid-1]][state[tid+1]];
+	     nextstate=next[state[tid]][state[tid-1]][state[tid+1]];
       }
     }
     binary_semaphore_up(&sem1);
@@ -157,11 +153,11 @@ void func(void * args)
     if(tid!=0)
     {
       if(nextstate==5)
-	if(state[tid-1]!=5)
-	{
-	  printf(1,"not all soldiers fire in the same time\n");
-	  exit();
-	}
+      	if(state[tid-1]!=5)
+      	{
+      	  printf(1,"not all soldiers fire in the same time\n");
+      	  exit();
+      	}
     }
     if(tid==(n-1))
       binary_semaphore_up(&sem3);
@@ -171,30 +167,45 @@ void func(void * args)
   if(tid==(n-1))
     fire=1;
   uthread_exit();
-  
 }
 
 int
 main(int argc, char *argv[])
 {
-  
-  n=atoi(argv[0]);
+  int i;
+  if(argc!=2)
+  {
+    printf (1,"uncorrect use of FSSP, use FSSP <int>\n");
+    exit();
+  }
+  n=atoi(argv[1]);
   int state[n];
+  for (i=0;i<n;i++)
+  {
+    state[i]=0;
+  }
   state[0]=1;
   fire=0;
   initNext();
-  int i;
+  
   uthread_init();
   
-  binary_semaphore_init(&sem1,1);
-  binary_semaphore_init(&sem2,0);
-  binary_semaphore_init(&sem3,0);
+  binary_semaphore_init(&sem1,0);
+  
+  binary_semaphore_init(&sem2,1);
+  
+  binary_semaphore_init(&sem3,1);
+  
   
   for(i=0;i<n;i++)
   {
     uthread_create(func,&state);
   }
-  while(!fire)
+
+  uthread_yield();
+
+  
+  while(fire==0)
   {
     binary_semaphore_down(&sem3);
     for(i=0;i<n-1;i++)
@@ -202,8 +213,10 @@ main(int argc, char *argv[])
       printf(1,"%d", state[i]);
     }
     printf(1,"%d\n", state[n-1]);
-    binary_semaphore_down(&sem2);
-  }
+    
   binary_semaphore_up(&sem3);
+  }
+  
+
   exit();
 }
