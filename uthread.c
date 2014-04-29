@@ -37,7 +37,6 @@
 
 static struct {
   uthread_t table[MAX_THREAD];
-
 } tTable;
 
 
@@ -49,7 +48,6 @@ void
 print_stack()
 {
   int *newesp = (int*)currentThread->esp;  
-  if(currentThread->tid==1){
   printf(1,"stack for thread %d \n",currentThread->tid);
   while((newesp < (int *)currentThread->ebp))
   {
@@ -57,22 +55,7 @@ print_stack()
       printf(1,"val:%x\n",*newesp);
     newesp++;
   }
-}
-}
 
-/*
- *Count the number of threads that thread tid is waiting for
- */
-int
-count_waiting(int tid)
-{
-  int count=0;
-  int i;
-  for (i=0; i<MAX_THREAD ; i++)
-  {
-    count += tTable.table[tid].waitingFor[i];
-  }
-  return count;
 }
 
 /*
@@ -136,9 +119,11 @@ allocThread()
     t->esp=t->ebp;
     t->firstTime=1;
   }
+  
+  t->waitingFor=-1;
+  
   for(j=0;j<MAX_THREAD;j++)
   {
-    t->waitingFor[j]=-1;
     t->waitedOn[j]=-1;
   }
    
@@ -231,13 +216,9 @@ uthread_exit()
   {
    if(currentThread->waitedOn[i]==1)
    {
-     tTable.table[i].waitingFor[currentThread->tid]=0; //release thread i from waiting
-     currentThread->waitedOn[i]=0; //not necessary maybe
-     
-     if(count_waiting(i)==0) //thread i is not waiting for no one
-     {
-       tTable.table[i].state=T_RUNNABLE;
-     }
+     tTable.table[i].waitingFor=-1; //release thread i from waiting
+     currentThread->waitedOn[i]=0; //not necessary maybe   
+     tTable.table[i].state=T_RUNNABLE;
    }
   }
   
@@ -293,8 +274,8 @@ uthread_join(int tid)
   else
   {
     alarm(0); //clear the alarm so as not to disturb running of function
-    tTable.table[tid].waitingFor[currentThread->tid]=1;
-    currentThread->waitedOn[tid]=1;
+    currentThread->waitingFor=tid;
+    tTable.table[tid].waitedOn[currentThread->tid]=1;
     currentThread->state=T_SLEEPING;
     uthread_yield();
     return 1;

@@ -17,14 +17,14 @@ struct uthread {
   void (*func)(void*);		/*starting function of the thread*/
   void *arguments;  		/*arguments for the starting function*/
   int waitedOn[MAX_THREAD];	/* threads that are waiting for this thread */
-  int waitingFor[MAX_THREAD];	/* threads that this thread is waiting for */
+  int waitingFor;		/* a thread that this thread is waiting for */
 
 };
 
 struct binary_semaphore
 {
-  uint locked; 		//is the semaphore locked
-  int thread;		//the holding thread
+  uint locked; 		//is the semaphore locked (1 is free,0 is locked)
+  int thread;		//the holding thread (automaticly updated)
   uint init;		//is the semaphore initialized
 };
 
