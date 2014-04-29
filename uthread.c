@@ -226,7 +226,8 @@ uthread_exit()
   new=getNextThread(currentThread->tid);
   
   //release all resources and zero all fields
-  free(currentThread->stack);
+  if(currentThread->tid!=0)
+    free(currentThread->stack);
   currentThread->tid=-1;
   currentThread->esp=-1;
   currentThread->ebp=-1;

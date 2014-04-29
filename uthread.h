@@ -26,6 +26,7 @@ struct binary_semaphore
   uint locked; 		//is the semaphore locked (1 is free,0 is locked)
   int thread;		//the holding thread (automaticly updated)
   uint init;		//is the semaphore initialized
+  //uint taken;
 };
 
 //uthred.c

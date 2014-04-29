@@ -4,12 +4,19 @@
 #include "fs.h"
 #include "uthread.h"
 
+
+//void initNext();
+//void func(void* tid);
 static int next[4][5][5];
-struct binary_semaphore sem1;
-struct binary_semaphore sem2;
-struct binary_semaphore sem3;
-int n;
-int fire;
+static struct binary_semaphore sem1;
+static struct binary_semaphore sem2;
+///struct binary_semaphore sem3;
+static int n;
+static int mone=0;
+static int* state;
+static int print=0;
+static int fire=0;
+static int in=0;
 void
 initNext()
 {
@@ -120,58 +127,56 @@ initNext()
 }
 
 
-void func(void * args)
+void func(void* tid)
 {
-  //int i;
-  int * state = args;
-  //int state[n];
-  int nextstate;
-  int tid=uthread_self();
-  while(state[tid]!=5)
+  int nextstate,left, right;
+ 
+  int currentstate=state[(int)tid];
+  while(currentstate!=5)
   {
     binary_semaphore_down(&sem1);
-    if(tid==0)
+
+    if((int)tid==0)
     {
-      nextstate=next[state[tid]][4][state[tid+1]];
-      //binary_semaphore_down(sem3);
+      left=4;
     }
     else
     {
-      if(tid==(n-1))
-      {
-	     nextstate=next[state[tid]][state[tid-1]][4];
-	     binary_semaphore_up(&sem2);
-      }
-      else
-      {
-	     nextstate=next[state[tid]][state[tid-1]][state[tid+1]];
-      }
+      left=state[(int)tid-1];
     }
+    if((int)tid==n-1)
+    {
+      right=4;
+    }
+    else
+    {
+      right=state[(int)tid+1];
+    }
+
+    nextstate=next[currentstate][left][right];
+    mone++;
+    if(mone==n)
+      in=1;
     binary_semaphore_up(&sem1);
+     // printf (1,"tid: %d  mone: %d\n",(int)tid,mone);
     binary_semaphore_down(&sem2);
-    state[tid]=nextstate;
-    if(tid!=0)
-    {
-      if(nextstate==5)
-      	if(state[tid-1]!=5)
-      	{
-      	  printf(1,"not all soldiers fire in the same time\n");
-      	  exit();
-      	}
-    }
-    if(tid==(n-1))
-      binary_semaphore_up(&sem3);
-    else
-      binary_semaphore_up(&sem2);
+    mone--;
+
+    state[(int)tid]=nextstate;
+    currentstate=nextstate;
+    if(mone==0)
+      print=1;
+    binary_semaphore_up(&sem2);
+
   }
-  if(tid==(n-1))
-    fire=1;
-  uthread_exit();
+ fire++;
+   
 }
 
 int
 main(int argc, char *argv[])
 {
+
   int i;
   if(argc!=2)
   {
@@ -179,44 +184,56 @@ main(int argc, char *argv[])
     exit();
   }
   n=atoi(argv[1]);
-  int state[n];
+  state= (int *) malloc(sizeof(int) * n);
   for (i=0;i<n;i++)
   {
     state[i]=0;
   }
   state[0]=1;
-  fire=0;
   initNext();
-  
   uthread_init();
-  
   binary_semaphore_init(&sem1,0);
-  
   binary_semaphore_init(&sem2,1);
-  
-  binary_semaphore_init(&sem3,1);
-  
+  binary_semaphore_down(&sem2);
+    for(i=0;i<n;i++)
+       {
+        printf(1,"%d",state[i]);
+       }
+      
   
   for(i=0;i<n;i++)
   {
-    uthread_create(func,&state);
+    uthread_create(func,(void *)i);
   }
 
-  uthread_yield();
+  binary_semaphore_up(&sem1);
 
-  
-  while(fire==0)
+  while(fire<n)
   {
-    binary_semaphore_down(&sem3);
-    for(i=0;i<n-1;i++)
+    if(mone==n && in==1)
     {
-      printf(1,"%d", state[i]);
+      binary_semaphore_down(&sem1);
+        printf(1,"\n");
+      binary_semaphore_up(&sem2);
+      in=0;
     }
-    printf(1,"%d\n", state[n-1]);
-    
-  binary_semaphore_up(&sem3);
+    if(print==1)
+    {
+      binary_semaphore_down(&sem2);
+      binary_semaphore_up(&sem1);
+       for(i=0;i<n;i++)
+       {
+        printf(1,"%d",state[i]);
+       }
+       //printf(1,"\n");
+       print=0;
+    }
+     
   }
-  
-
+//printf (1,"333333\n");
+  //uthread_yield();
+   free(state);
+  uthread_exit();
+ 
   exit();
 }
