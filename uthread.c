@@ -224,8 +224,8 @@ uthread_create(void (*start_func)(void *), void* arg)
 void 
 uthread_exit()
 {
+  alarm(0); //clear the alarm so as not to disturb running of function
   int new,i;
-  
   //wakeup all threads waiting for this one
   for(i=0;i<MAX_THREAD;i++)
   {
@@ -290,9 +290,9 @@ uthread_join(int tid)
 {
   if((&tTable.table[tid])->state==T_FREE)
     return -1;
-  
   else
   {
+    alarm(0); //clear the alarm so as not to disturb running of function
     tTable.table[tid].waitingFor[currentThread->tid]=1;
     currentThread->waitedOn[tid]=1;
     currentThread->state=T_SLEEPING;
@@ -307,6 +307,7 @@ uthread_join(int tid)
 void 
 uthread_yield()
 {
+  alarm(0); //clear the alarm so as not to disturb running of function
   int new=getNextThread(currentThread->tid);
   if(new==-1)
   {

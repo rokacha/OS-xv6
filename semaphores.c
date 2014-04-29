@@ -17,32 +17,18 @@ xchg(volatile uint *addr, uint newval)
   return result;
 }
 
-void
-acquireSemaphore(struct binary_semaphore *sem)
-{
-  while(xchg(&sem->taken, 1) == 1) 
-  {
-    uthread_yield();
-  }
-}
-
-void
-releaseSemaphore(struct binary_semaphore *sem)
-{
-  sem->taken=0;
-}
 
 void
 binary_semaphore_init(struct binary_semaphore* semaphore, int value)
 {
   semaphore->init=0;
   
-  if(value==1)
+  if(value!=0)
     semaphore->thread=-1;
   else 
     semaphore->thread = uthread_self();
   
-  semaphore->locked = 1 - value;
+  semaphore->locked = value;
   
   semaphore->init=1;
   
@@ -51,34 +37,39 @@ binary_semaphore_init(struct binary_semaphore* semaphore, int value)
 void 
 binary_semaphore_down(struct binary_semaphore* semaphore)
 {
-  acquireSemaphore(semaphore);
+  if(semaphore->init==0)
+  {
+    printf(1,"semaphore uninitialized yet\n");
+    return;
+  }
+  
   
   int i= uthread_self();
   
-  while( semaphore->locked==1)
+  while(xchg(&semaphore->locked, 0) == 0) //means the semaphore is taken allready
   {
-      releaseSemaphore(semaphore);
-      uthread_yield();  
-      acquireSemaphore(semaphore);
+    uthread_yield();
   }
   
-  semaphore->locked = 1;
   semaphore->thread = i;
-  releaseSemaphore(semaphore);
 }
 
 void 
 binary_semaphore_up(struct binary_semaphore* semaphore)
 {
-  acquireSemaphore(semaphore);
+    if(semaphore->init==0)
+  {
+    printf(1,"semaphore uninitialized yet\n");
+    return;
+  }
   
   int i= uthread_self();
   
-  if( semaphore->locked == 1 && semaphore->thread == i)
+  if( semaphore->locked == 0 && semaphore->thread == i)
   {
-      semaphore->locked = 0;
       semaphore->thread = -1;
+      semaphore->locked = 1;
+
   }
 
-  releaseSemaphore(semaphore);
 }
