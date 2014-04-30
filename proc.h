@@ -74,12 +74,12 @@ struct proc {
   int queue;
   int placeInQueue;
 
-  /*/Time Related fields
+  //Time Related fields
   uint ctime;                  //creation time
   uint etime;                  //end time
   uint iotime;                 //waiting for I/O time
   uint rtime;                  //running time
-  int quanta;*/
+  int quanta;
 
   //signal supporting fields
   uint pending;

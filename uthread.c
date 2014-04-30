@@ -65,26 +65,21 @@ print_stack()
 int
 getNextThread(int j)
 {
-  int i=j+1;
-  if(i==MAX_THREAD)
-    i=0;
-  uthread_p t=&tTable.table[i];
+  uthread_p t;
+  int i=(j+1)%MAX_THREAD;
+
   while(i!=j)
   {
+    t=&tTable.table[i];
     if(t->state==T_RUNNABLE)
       return i;
-    i++;
-    if(i==MAX_THREAD)
-    {
-     i=0;
-     t=&tTable.table[i];
-   }
-   else
-    t++;
+    i=(i+1)%MAX_THREAD;
+  }
 
+return i;
 }
-return -1;
-}
+
+
 
 /*
  * allocates a spot for a new thread
@@ -210,7 +205,8 @@ void
 uthread_exit()
 {
   alarm(0); //clear the alarm so as not to disturb running of function
-  int new,i;
+  int last,new,i;
+  last = currentThread->tid;
   //wakeup all threads waiting for this one
   for(i=0;i<MAX_THREAD;i++)
   {
@@ -238,7 +234,7 @@ uthread_exit()
   currentThread->state=T_FREE;
   
   //load new thread
-  if(new>=0)
+  if(new!=last)
   {
     currentThread=&tTable.table[new];
     currentThread->state=T_RUNNING;
@@ -261,6 +257,9 @@ uthread_exit()
     {  
     POP_ALL_REGISTERS();
     }
+  }
+  else{
+    exit();
   }
 }
 
@@ -291,13 +290,13 @@ uthread_yield()
 {
   alarm(0); //clear the alarm so as not to disturb running of function
   int new=getNextThread(currentThread->tid);
-  if(new==-1)
+  if(new==currentThread->tid)
   {
     if(alarm(THREAD_QUANTA)<0)
     {
       printf(1,"Cant activate alarm system call\n");
       exit();
-    } 
+    }
   }
   else
   {
@@ -325,8 +324,8 @@ uthread_yield()
     
     if(currentThread->firstTime==1)
     {
-    currentThread->firstTime=0;
-    POP_AND_RET();
+      currentThread->firstTime=0;
+      POP_AND_RET();
     }
     else
     {

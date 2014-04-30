@@ -79,7 +79,7 @@ sleepingUpDate(void)
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 
-  /*  if(p->state == SLEEPING){
+    if(p->state == SLEEPING){
       p->iotime++;
       
     }
@@ -87,7 +87,7 @@ sleepingUpDate(void)
     if(p->state == RUNNING){
       p->rtime++;
       p->quanta--;
-    }*/
+    }
     
     if(p->alarm>=0)
     {
@@ -137,14 +137,14 @@ changeStatus(enum procstate s,struct proc* p)
   
   int location = findIndxOfProc(p);
   
- //enum procstate prevState = p->state; 
+ enum procstate prevState = p->state; 
 
   p->state=s;
 
   if(location<0)
     cprintf("Cant find any processes with pid %d\n",p->pid);
   
-  /*  switch(SCHEDFLAG){
+    switch(SCHEDFLAG){
 
       case SCHED_3Q:
         if(s==RUNNABLE)
@@ -203,7 +203,7 @@ changeStatus(enum procstate s,struct proc* p)
           p->quanta=QUANTA;
         }
       break;
-    }*/
+    }
 }
 
 
@@ -236,9 +236,9 @@ found:
   p->pid = nextpid++;
 
   //update time of creation
-  //p->ctime=get_time();
- // p->iotime=0;
- // p->rtime=0;
+  p->ctime=get_time();
+  p->iotime=0;
+  p->rtime=0;
   p->pending=0;
   p->alarm=-1; //not set
 
@@ -394,7 +394,7 @@ exit(void)
 
   iput(proc->cwd);
   proc->cwd = 0;
- // proc->etime=get_time();
+  proc->etime=get_time();
   proc->queue=0;
 
   acquire(&ptable.lock);
@@ -489,9 +489,9 @@ struct proc *p;
         p->name[0] = 0;
         p->killed = 0;
         p->queue=0;
-      //  *wtime=p->etime-p->ctime-p->rtime-p->iotime;
-       // *rtime=p->rtime;
-       // *iotime=p->iotime;
+        *wtime=p->etime-p->ctime-p->rtime-p->iotime;
+        *rtime=p->rtime;
+        *iotime=p->iotime;
         
         release(&ptable.lock);
         return pid;

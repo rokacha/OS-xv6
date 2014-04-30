@@ -127,42 +127,50 @@ initNext()
 }
 
 
-void func(void* tid)
+void func(void * tid)
 {
-  int nextstate,left, right;
- 
-  int currentstate=state[(int)tid];
+  int currentstate,nextstate,left, right,soldier;
+
+  soldier = (int)tid;
+  currentstate=state[soldier];
+
   while(currentstate!=5)
   {
     binary_semaphore_down(&sem1);
+    
+    left = (soldier==0) ? 4 :state[soldier-1] ;
 
-    if((int)tid==0)
-    {
-      left=4;
-    }
-    else
-    {
-      left=state[(int)tid-1];
-    }
-    if((int)tid==n-1)
-    {
-      right=4;
-    }
-    else
-    {
-      right=state[(int)tid+1];
-    }
+    right = (soldier==n-1) ? 4 :state[soldier+1] ;
+    
+    // if(soldier==0)
+    // {
+    //   left=4;
+    // }
+    // else
+    // {
+    //   left=state[soldier-1];
+    // }
+    // if(soldier==n-1)
+    // {
+    //   right=4;
+    // }
+    // else
+    // {
+    //   right=state[soldier+1];
+    // }
 
     nextstate=next[currentstate][left][right];
     mone++;
     if(mone==n)
+    {
       in=1;
+    }
+
     binary_semaphore_up(&sem1);
      // printf (1,"tid: %d  mone: %d\n",(int)tid,mone);
     binary_semaphore_down(&sem2);
     mone--;
-
-    state[(int)tid]=nextstate;
+    state[soldier]=nextstate;
     currentstate=nextstate;
     if(mone==0)
       print=1;
@@ -180,25 +188,31 @@ main(int argc, char *argv[])
   int i;
   if(argc!=2)
   {
-    printf (1,"uncorrect use of FSSP, use FSSP <int>\n");
+    printf (1,"incorrect use of FSSP, use FSSP <int>\n");
     exit();
   }
   n=atoi(argv[1]);
+
   state= (int *) malloc(sizeof(int) * n);
+  
   for (i=0;i<n;i++)
   {
     state[i]=0;
   }
+
   state[0]=1;
+
   initNext();
+
   uthread_init();
+  
   binary_semaphore_init(&sem1,0);
-  binary_semaphore_init(&sem2,1);
-  binary_semaphore_down(&sem2);
-    for(i=0;i<n;i++)
-       {
-        printf(1,"%d",state[i]);
-       }
+  binary_semaphore_init(&sem2,0);
+  
+  for(i=0;i<n;i++)
+  {
+    printf(1,"%d",state[i]);
+  }
       
   
   for(i=0;i<n;i++)

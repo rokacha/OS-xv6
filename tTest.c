@@ -33,7 +33,7 @@ binary_semaphore_init(&ticketsLock, 1);
  printf(1, "Start selling\n");
  uthread_yield(); // Let all threads loose
 
- printf(1, "All done!\n");
+ //printf(1, "All done!\n");
 
  uthread_exit();
  exit(); // satisfy gcc
