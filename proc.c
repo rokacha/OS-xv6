@@ -452,7 +452,8 @@ procdump(void)
   [RUNNING]   "run   ",
   [ZOMBIE]    "zombie"
   };
-  int i;
+  int i,j;
+  uint* ptbl;
   struct proc *p;
   char *state;
   uint pc[10];
@@ -469,6 +470,34 @@ procdump(void)
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
+    }
+    cprintf("\n");
+    cprintf("Page tables:\n");
+    cprintf("    memory location of page directory = %p\n",p->pgdir);
+    for(i=0; i<NPDENTRIES/2 ; i++) //the /2 is unexplainable, maybe all the rest are kernel?
+    {
+      if(p->pgdir[i] & PTE_P && p->pgdir[i] & PTE_U)
+      {
+	cprintf("    pdir PDE %d, %d\n",i,PTE_ADDR(p->pgdir[i])>>PTXSHIFT);
+	cprintf("        memory location of page table = %p\n",V2P(PTE_ADDR(p->pgdir[i])) );
+	ptbl=(uint*)V2P(PTE_ADDR(p->pgdir[i]));
+	for(j=0; j<NPTENTRIES ; j++)
+	{
+	  if( ptbl[j]  & PTE_P)
+	  {
+	    cprintf("        ptbl PTE %d, %d, %p\n",j,PTE_ADDR(ptbl[j])>>PTXSHIFT,V2P(PTE_ADDR(ptbl[j])));
+	  }
+	}
+	cprintf("    Page Mappings:\n");
+	for(j=0; j<NPTENTRIES ; j++)
+	{
+	  if( ptbl[j]  & PTE_P)
+	  {
+	    cprintf("        %d->%d\n",j,PTE_ADDR(ptbl[j])>>PTXSHIFT);
+	  }
+	}
+	
+      }
     }
     cprintf("\n");
   }
