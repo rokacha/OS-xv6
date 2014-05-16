@@ -118,7 +118,7 @@ static struct kmap {
   uint phys_end;
   int perm;
 } kmap[] = {
-  { (void*) KERNBASE, 0,             EXTMEM,    PTE_W},  // I/O space
+  { (void*) KERNBASE, 0,  EXTMEM,    PTE_W},  // I/O space
   { (void*) KERNLINK, V2P(KERNLINK), V2P(data), 0}, // kernel text+rodata
   { (void*) data,     V2P(data),     PHYSTOP,   PTE_W},  // kernel data, memory
   { (void*) DEVSPACE, DEVSPACE,      0,         PTE_W},  // more devices
@@ -130,7 +130,6 @@ setupkvm()
 {
   pde_t *pgdir;
   struct kmap *k;
-
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);
@@ -198,7 +197,6 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 {
   uint i, pa, n;
   pte_t *pte;
-
   if((uint) addr % PGSIZE != 0)
     panic("loaduvm: addr must be page aligned");
   for(i = 0; i < sz; i += PGSIZE){
@@ -316,7 +314,7 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
+  for(i = PGSIZE; i < (sz); i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))

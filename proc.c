@@ -87,6 +87,11 @@ userinit(void)
   if((p->pgdir = setupkvm(kalloc)) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+
+  //uint* i;
+  //for (i=p->pgdir;i < &p->pgdir[NPDENTRIES];i++)
+  //  if(*i) cprintf("%p\n",*i);  
+    
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
@@ -99,7 +104,6 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
   p->state = RUNNABLE;
 }
 
@@ -474,7 +478,7 @@ procdump(void)
     cprintf("\n");
     cprintf("Page tables:\n");
     cprintf("    memory location of page directory = %p\n",p->pgdir);
-    for(i=0; i<NPDENTRIES/2 ; i++) //the /2 is unexplainable, maybe all the rest are kernel?
+    for(i=0;i<NPDENTRIES/2+1 ; i++) //all the rest are kernel and marked as user???
     {
       if(p->pgdir[i] & PTE_P && p->pgdir[i] & PTE_U)
       {
