@@ -93,10 +93,6 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 
 
 
-void
-cow(){
-  
-}
 
 // There is one page table per process, plus one that's used when
 // a CPU is not running any process (kpgdir). The kernel uses the
@@ -314,6 +310,37 @@ clearpteu(pde_t *pgdir, char *uva)
   if(pte == 0)
     panic("clearpteu");
   *pte &= ~PTE_U;
+}
+
+
+
+void
+cow(){
+  
+  pte_t *pte;
+  uint pa;
+  char *mem;
+  uint faddr=rcr2();
+
+ 
+
+   if((pte = walkpgdir(proc->pgdir, (void *) faddr, 0)) == 0)
+      panic("cow: pte should exist");
+
+    if(!(*pte & PTE_P))
+      panic("cow: page not present");
+
+    pa = PTE_ADDR(*pte);
+    if((mem = kalloc()) == 0)
+      panic("cow: cannot allocate new memory");
+
+    memmove(mem, (char*)p2v(pa), PGSIZE);
+    *pte = ((uint)PGROUNDDOWN((uint)mem) | (*pte&0xFFF) | PTE_W )& ~PTE_S;
+    
+  asm("movl %cr3,%eax");
+  asm("movl %eax,%cr3");
+
+
 }
 
 // Given a parent process's page table, create a copy

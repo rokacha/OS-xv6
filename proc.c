@@ -170,7 +170,7 @@ cowfork(void)
 {
   int i, pid;
   struct proc *np;
-  pte_t* pde,pte;
+  pte_t* pde,*pte;
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
