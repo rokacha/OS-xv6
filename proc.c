@@ -478,7 +478,7 @@ procdump(void)
     cprintf("\n");
     cprintf("Page tables:\n");
     cprintf("    memory location of page directory = %p\n",p->pgdir);
-    for(i=0;i<NPDENTRIES/2+1 ; i++) //all the rest are kernel and marked as user???
+    for(i=0;i<NPDENTRIES/2 ; i++) //all the rest are kernel and marked as user???
     {
       if(p->pgdir[i] & PTE_P && p->pgdir[i] & PTE_U)
       {
