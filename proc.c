@@ -165,6 +165,47 @@ fork(void)
   return pid;
 }
 
+int
+cowfork(void)
+{
+  int i, pid;
+  struct proc *np;
+  pte_t* pde,*pte;
+  // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;
+
+  np->pgdir=proc->pgdir;
+
+  for(pde=np->pgdir;pde<&np->pgdir[PGSIZE];pde++)
+  {
+    if((*pde & PTE_U) && (*pde & PTE_P)){
+      for(pte=(pte_t*)V2P(PTE_ADDR(*pde)); pte < &(((pte_t*)V2P(PTE_ADDR(*pde)))[PGSIZE]) ;pte++)
+      {
+        *pte = (*pte&PTE_W) ? *pte & (~PTE_W) & (PTE_S) : *pte;
+        
+      }
+    }
+  }
+
+  np->sz = proc->sz;
+  np->parent = proc;
+  *np->tf = *proc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+ 
+  pid = np->pid;
+  np->state = RUNNABLE;
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  return pid;
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
