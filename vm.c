@@ -7,6 +7,68 @@
 #include "proc.h"
 #include "elf.h"
 
+// struct sharedPage {
+//   struct sharedPage *nextLink;
+//   uint page;
+//   int shares;
+// };
+// 
+// struct sharedPagesStructure{  
+//  struct sharedPage firsPage;
+//  struct sharedPage *lastPage;
+//  int numOfSharedPages;
+//  uint initializedList;
+// } list;
+// 
+// void
+// increaseShareCount(uint pte)
+// {
+//   
+//   struct sharedPage *link;
+//   
+//   if(!list.initializedList)
+//   {
+//     if((link = (struct sharedPage*)kalloc()) == 0)
+//       panic("increaseShareCount: cant allocate new links");
+//     list.firsPage.nextLink=link;
+//     list.firsPage.page=0;
+//     list.firsPage.shares=-1;
+//     list.lastPage=&list.firsPage;
+//     list.numOfSharedPages=0;
+//     list.initializedList=1;
+//     
+//   }
+//   //link = findPage(pte);
+//   if (link)
+//   {
+//     link->shares++;
+//   }
+//   
+// }
+static char sharedPages[1>>20];
+
+int 
+increaseShareCount(uint pte)
+{
+  int indx=PTE_ADDR(pte);
+  return ++sharedPages[indx];
+}
+
+int 
+decreaseSharedCount(uint pte)
+{
+  int indx = PTE_ADDR(pte);
+  if(!sharedPages[indx])
+    panic("decreaseSharedCount: cant unshare completely");
+  return --sharedPages[indx];
+}
+
+int
+returnShareCount(uint pte)
+{
+  return sharedPages[PTE_ADDR(pte)];
+}
+
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 struct segdesc gdt[NSEGS];
@@ -37,6 +99,9 @@ seginit(void)
   // Initialize cpu-local storage.
   cpu = c;
   proc = 0;
+  
+  //Initialize the sharedPagesList
+//     list.initializedList=0;
 }
 
 // Return the address of the PTE in page table pgdir
@@ -88,10 +153,6 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   }
   return 0;
 }
-
-
-
-
 
 
 // There is one page table per process, plus one that's used when
@@ -213,10 +274,12 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz, uint f
       n = sz - i;
     else
       n = PGSIZE;
+    
     if (!(flags & ELF_PROG_FLAG_WRITE))
     {
       pte[0]=pte[0]&(~PTE_W);
     }
+    
     if(readi(ip, p2v(pa), offset+i, n) != n)
       return -1;
   }
@@ -320,13 +383,14 @@ cow(){
   pte_t *pte;
   uint pa;
   char *mem;
+  int shares;
   uint faddr=rcr2();
-
- 
 
    if((pte = walkpgdir(proc->pgdir, (void *) faddr, 0)) == 0)
       panic("cow: pte should exist");
-
+   
+  shares=returnShareCount(*pte);
+   //need to check what address is being shared!!
     if(!(*pte & PTE_P))
       panic("cow: page not present");
 
@@ -341,6 +405,49 @@ cow(){
   asm("movl %eax,%cr3");
 
 
+}
+/* assuming that source is a pointer to the first pte_t in
+ * the source proc pgdir*/
+pte_t*
+cpyPgdir(pte_t* source)
+{
+  pte_t *newPgdir,*pde,*pte;
+  uint pa,perm;
+  int i,j;
+  
+  if((newPgdir = (pde_t*)kalloc()) == 0)
+    return 0;
+  memset(newPgdir, 0, PGSIZE);
+  for(i=0;i<NPDENTRIES;i++)
+  {
+    pde=&source[i];
+    if(*pde & PTE_P)
+    {
+      for(j=0;j<NPTENTRIES;j++)
+      {
+	pte=&((pte_t*)V2P(PTE_ADDR(*pde)))[j];
+	if(*pte & PTE_P)
+	{
+	  pa = PTE_ADDR(*pte);
+	  
+	  perm= *pte & 0xFFF;
+	  if((*pte & PTE_W) && (*pte & PTE_U))
+	  {
+	    perm = (perm & ~PTE_W) | PTE_S;
+	  }
+	  
+	  if(mappages(newPgdir, (void*)(i>>PDXSHIFT | j>>PTXSHIFT), PGSIZE, pa, perm) < 0)
+	    panic("cpyPgdir: cant mappages for new Pgtable");
+	  if(perm & PTE_S)
+	  {
+	    *pte= (*pte & ~0xFFF) | perm;
+	    increaseShareCount((uint)pte);
+	  }
+	}
+      }
+    }
+  }
+  return newPgdir;
 }
 
 // Given a parent process's page table, create a copy
@@ -415,3 +522,4 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   }
   return 0;
 }
+
