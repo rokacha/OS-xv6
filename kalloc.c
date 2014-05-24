@@ -11,7 +11,6 @@
 
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
-extern char sharedPages[]; // list of shared pages
 
 struct run {
   struct run *next;
@@ -41,14 +40,9 @@ kinit1(void *vstart, void *vend)
 void
 kinit2(void *vstart, void *vend)
 {
-  int i;
   freerange(vstart, vend);
   kmem.use_lock = 1;
-  for(i=0; i<(2>>20) ;i++)
-  {
-    sharedPages[i]=0;
-  }
-  
+
 }
 
 void

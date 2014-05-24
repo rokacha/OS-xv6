@@ -6,29 +6,53 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "spinlock.h"
 
-extern char sharedPages[1>>20];
+static struct spinlock sharedLock;
+static char sharedPages[1<<20];
 
+int 
+initalizeSharedPages(void)
+{
+    //Initialize the sharedPagesList
+  int i;
+  for (i=0;i<(1<<20);i++)
+  {
+    sharedPages[i]=0;
+  }
+  initlock(&sharedLock,"sharedLock");
+  return 1;
+}
 int 
 increaseShareCount(uint pte)
 {
-  int indx=PTE_ADDR(pte);
-  return ++sharedPages[indx];
+  acquire(&sharedLock);
+  uint indx = pte/PGSIZE;
+  sharedPages[indx]++;
+  int ans = sharedPages[indx];
+  release(&sharedLock);
+  return ans;
 }
 
 int 
 decreaseSharedCount(uint pte)
 {
-  int indx = PTE_ADDR(pte);
+  acquire(&sharedLock);
+  uint indx = pte/PGSIZE;
+
   if(!sharedPages[indx])
     panic("decreaseSharedCount: cant unshare completely");
-  return --sharedPages[indx];
+
+  sharedPages[indx]--;
+  int ans = sharedPages[indx];
+  release(&sharedLock);
+  return ans;
 }
 
 int
 returnShareCount(uint pte)
 {
-  return sharedPages[PTE_ADDR(pte)];
+  return (int)sharedPages[PTE_ADDR(pte)/PGSIZE];
 }
 
 extern char data[];  // defined by kernel.ld
@@ -40,6 +64,7 @@ struct segdesc gdt[NSEGS];
 void
 seginit(void)
 {
+
   struct cpu *c;
 
   // Map "logical" addresses to virtual addresses using identity map.
@@ -62,8 +87,7 @@ seginit(void)
   cpu = c;
   proc = 0;
   
-  //Initialize the sharedPagesList
-//     list.initializedList=0;
+
 }
 
 // Return the address of the PTE in page table pgdir
@@ -214,7 +238,7 @@ inituvm(pde_t *pgdir, char *init, uint sz)
     panic("inituvm: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, v2p(mem), PTE_W|PTE_U);
+  mappages(pgdir, 0, PGSIZE, v2p(mem), PTE_W | PTE_U);
   memmove(mem, init, sz);
 }
 
@@ -293,12 +317,19 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     pte = walkpgdir(pgdir, (char*)a, 0);
     if(!pte)
       a += (NPTENTRIES - 1) * PGSIZE;
-    else if((*pte & PTE_P) != 0){
+    else if((*pte & PTE_P) != 0 ){
       pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("kfree");
-      char *v = p2v(pa);
-      kfree(v);
+      if(returnShareCount(*pte)==0)
+      {
+        char *v = p2v(pa);
+        kfree(v);
+      }
+      else
+      {
+        decreaseSharedCount(*pte);
+      }
       *pte = 0;
     }
   }
@@ -346,75 +377,79 @@ cow(){
   uint pa;
   char *mem;
   int shares;
-
   uint faddr=rcr2();
 
-   if((pte = walkpgdir(proc->pgdir, (void *) faddr, 0)) == 0)
+  if((pte = walkpgdir(proc->pgdir, (void *) faddr, 0)) == 0)
       panic("cow: pte should exist");
-   
   shares=returnShareCount(*pte);
-  if (shares){
 
-   //need to check what address is being shared!!
+  if (shares>0){
     if(!(*pte & PTE_P))
       panic("cow: page not present");
-
     pa = PTE_ADDR(*pte);
+    
     if((mem = kalloc()) == 0)
       panic("cow: cannot allocate new memory");
-
     memmove(mem, (char*)p2v(pa), PGSIZE);
-    *pte = ((uint)PGROUNDDOWN((uint)mem) | (*pte&0xFFF) | PTE_W )& ~PTE_S;
-    
-    decreaseSharedCount(*pte);
-    asm("movl %cr3,%eax");
-    asm("movl %eax,%cr3");
-}
 
+    decreaseSharedCount(*pte);
+    
+    *pte = ((uint)v2p(mem) | (*pte & 0xFFF) | PTE_W ) & ~PTE_S;
+  }
+  else
+  {
+    if((shares==0) && (*pte & PTE_S))
+    {
+      *pte = (*pte | PTE_W )& ~PTE_S;
+    }
+  }
+  asm("movl %cr3,%eax");
+  asm("movl %eax,%cr3");
 
 }
 /* assuming that source is a pointer to the first pte_t in
  * the source proc pgdir*/
-pte_t*
-cpyPgdir(pte_t* source)
+pde_t*
+cpyPgdir(pde_t* source,uint sz)
 {
-  pte_t *newPgdir,*pde,*pte;
+  pde_t *newPgdir;
+  pte_t *pte;
   uint pa,perm;
-  int i,j;
-  
-  if((newPgdir = (pde_t*)kalloc()) == 0)
-    return 0;
-  memset(newPgdir, 0, PGSIZE);
-  for(i=0;i<NPDENTRIES;i++)
+  int i;
+  if((newPgdir=setupkvm()) == 0)
+    panic("cpyPgdir: setupkvm failed");
+
+  for(i = PGSIZE; i < (sz); i += PGSIZE)
   {
-    pde=&source[i];
-    if(*pde & PTE_P)
+    if((pte = walkpgdir(source, (void *) i, 0)) == 0)
+      panic("copyuvm: pte should exist");
+    if(!(*pte & PTE_P))
+      panic("copyuvm: page not present");
+    pa = PTE_ADDR(*pte);
+    perm= *pte & 0xFFF;
+    if((*pte & PTE_W) && (*pte & PTE_U))
     {
-      for(j=0;j<NPTENTRIES;j++)
-      {
-	pte=&((pte_t*)V2P(PTE_ADDR(*pde)))[j];
-	if(*pte & PTE_P)
-	{
-	  pa = PTE_ADDR(*pte);
-	  
-	  perm= *pte & 0xFFF;
-	  if((*pte & PTE_W) && (*pte & PTE_U))
-	  {
-	    perm = (perm & ~PTE_W) | PTE_S;
-	  }
-	  
-	  if(mappages(newPgdir, (void*)(i>>PDXSHIFT | j>>PTXSHIFT), PGSIZE, pa, perm) < 0)
-	    panic("cpyPgdir: cant mappages for new Pgtable");
-	  if(perm & PTE_S)
-	  {
-	    *pte= (*pte & ~0xFFF) | perm;
-	    increaseShareCount((uint)pte);
-	  }
-	}
-      }
+     perm = (perm & ~PTE_W) | PTE_S;
+    }
+    if(mappages(newPgdir, (void*)i, PGSIZE, pa, perm) < 0)
+      goto bad;
+
+    increaseShareCount(*pte);
+    
+    if(perm & PTE_S)
+    {
+      *pte= (*pte & ~0xFFF) | perm;
     }
   }
+    asm("movl %cr3,%eax");
+    asm("movl %eax,%cr3");
   return newPgdir;
+
+  bad:
+  freevm(newPgdir);
+  return 0;
+ 
+  
 }
 
 // Given a parent process's page table, create a copy
@@ -439,7 +474,6 @@ copyuvm(pde_t *pgdir, uint sz)
       goto bad;
     memmove(mem, (char*)p2v(pa), PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, v2p(mem), *pte & 0xFFF) < 0)
-    //if(mappages(d, (void*)i, PGSIZE, v2p(mem), PTE_W|PTE_U) < 0)
       goto bad;
   }
   return d;

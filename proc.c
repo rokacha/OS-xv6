@@ -176,10 +176,7 @@ cowfork(void)
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
-
-  np->pgdir=cpyPgdir(proc->pgdir);
-
-
+  np->pgdir=cpyPgdir(proc->pgdir,proc->sz);
 
   np->sz = proc->sz;
   np->parent = proc;
@@ -196,6 +193,7 @@ cowfork(void)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+  //procdump();
   return pid;
 }
 
@@ -329,6 +327,7 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
+      //cprintf("the process now running is %d",proc->pid);
       switchuvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
@@ -516,24 +515,26 @@ procdump(void)
     {
       if(p->pgdir[i] & PTE_P && p->pgdir[i] & PTE_U)
       {
-	cprintf("    pdir PDE %d, %d\n",i,PTE_ADDR(p->pgdir[i])>>PTXSHIFT);
-	cprintf("        memory location of page table = %p\n",V2P(PTE_ADDR(p->pgdir[i])) );
-	ptbl=(uint*)V2P(PTE_ADDR(p->pgdir[i]));
-	for(j=0; j<NPTENTRIES ; j++)
-	{
-	  if( ptbl[j]  & PTE_P)
-	  {
-	    cprintf("        ptbl PTE %d, %d, %p\n",j,PTE_ADDR(ptbl[j])>>PTXSHIFT,V2P(PTE_ADDR(ptbl[j])));
-	  }
-	}
-	cprintf("    Page Mappings:\n");
-	for(j=0; j<NPTENTRIES ; j++)
-	{
-	  if( ptbl[j]  & PTE_P)
-	  {
-	    cprintf("        %d->%d\n",j,PTE_ADDR(ptbl[j])>>PTXSHIFT);
-	  }
-	}
+	      cprintf("    pdir PDE %d, %d\n",i,PTE_ADDR(p->pgdir[i])>>PTXSHIFT);
+	      cprintf("        memory location of page table = %p\n",P2V(PTE_ADDR(p->pgdir[i])) );
+	      ptbl=(uint*)V2P(PTE_ADDR(p->pgdir[i]));
+        for(j=0; j<NPTENTRIES ; j++)
+      	{
+      	  if( ptbl[j]  & PTE_P)
+      	  {
+      	    cprintf("        ptbl PTE %d, %d, %p\n",j,PTE_ADDR(ptbl[j])>>PTXSHIFT,P2V(PTE_ADDR(ptbl[j])));
+      	  }
+      	}
+	      cprintf("    Page Mappings:\n");
+      	for(j=0; j<NPTENTRIES ; j++)
+      	{
+      	  if( ptbl[j]  & PTE_P)
+      	  {
+      	    cprintf("        %d->%d,%s,%s\n",j,PTE_ADDR(ptbl[j])>>PTXSHIFT,
+              (ptbl[j]&PTE_W)?"N":"Y",
+              ((returnShareCount(ptbl[j])>0))?"Y":"N");
+      	  }
+      	}
 	
       }
     }

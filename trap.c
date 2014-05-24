@@ -46,6 +46,7 @@ trap(struct trapframe *tf)
     return;
   }
 
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
@@ -78,12 +79,15 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
    case T_PGFLT:
-      if(tf->err==7)
-      {
+      //if(tf->err==7)
+      //{
+        proc->tf=tf;
         cow();
         lapiceoi();
-      }
-      break;
+     return;
+        
+      //}
+      //break;
   //PAGEBREAK: 13
   default:
     if(proc == 0 || (tf->cs&3) == 0){

@@ -18,6 +18,7 @@ int
 main(void)
 {
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
+  
   kvmalloc();      // kernel page table
   mpinit();        // collect info about this machine
   lapicinit(mpbcpu());
@@ -38,6 +39,7 @@ main(void)
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
   userinit();      // first user process
+  initalizeSharedPages(); // initialize the shared pages
   // Finish setting up this processor in mpmain.
   mpmain();
 }

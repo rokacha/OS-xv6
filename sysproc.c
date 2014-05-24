@@ -93,3 +93,9 @@ sys_cowfork(void)
 {
   return cowfork();
 }
+int
+sys_procdump(void)
+{
+  procdump();
+  return 1;
+}

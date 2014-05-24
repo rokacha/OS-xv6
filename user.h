@@ -23,6 +23,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int cowfork(void);
+int procdump(void);
 
 // ulib.c
 int stat(char*, struct stat*);
