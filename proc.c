@@ -170,7 +170,7 @@ cowfork(void)
 {
   int i, pid;
   struct proc *np;
-  pte_t* pde,pte;
+  pte_t* pde,*pte;
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
@@ -180,10 +180,12 @@ cowfork(void)
   for(pde=np->pgdir;pde<&np->pgdir[PGSIZE];pde++)
   {
     if((*pde & PTE_U) && (*pde & PTE_P)){
-      for(pte=(pte_t*)V2P(PTE_ADDR(*pde)); pte < &(((pte_t*)V2P(PTE_ADDR(*pde)))[PGSIZE]) ;pte++)
+      for(pte=(pte_t*)V2P(PTE_ADDR(*pde));
+       pte < &(((pte_t*)V2P(PTE_ADDR(*pde)))[PGSIZE]) ;
+       pte++)
       {
         *pte = (*pte&PTE_W) ? *pte & (~PTE_W) & (PTE_S) : *pte;
-        
+
       }
     }
   }
