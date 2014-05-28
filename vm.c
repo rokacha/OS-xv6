@@ -383,7 +383,7 @@ cow(){
       panic("cow: pte should exist");
   shares=returnShareCount(*pte);
 
-  if (shares>0){
+  if (shares>0 && (*pte & PTE_S)){
     if(!(*pte & PTE_P))
       panic("cow: page not present");
     pa = PTE_ADDR(*pte);
@@ -401,6 +401,17 @@ cow(){
     if((shares==0) && (*pte & PTE_S))
     {
       *pte = (*pte | PTE_W )& ~PTE_S;
+    }
+    else
+    {
+      if (faddr<PGSIZE){
+        cprintf("PgFault : first page access denied (address %p)\n",faddr);
+      }else
+      {
+        cprintf("PgFault : cant access an address (%p) as requested\n",faddr);  
+      }
+      
+      exit();
     }
   }
   asm("movl %cr3,%eax");

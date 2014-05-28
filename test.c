@@ -8,7 +8,7 @@ main(int argc, char *argv[])
 {
 	int a; 
 	int b;
-	//int* p=0;
+	int* p=0;
 
 	int* variable = (int*)malloc(sizeof(int));
 	printf(1,"First test : regular fork\n");
@@ -21,11 +21,12 @@ main(int argc, char *argv[])
 		//printf(1,"Second test : cowfork\n");
 		if((a = cowfork())!=0)
 		{
+			//*((int*)main) = 32;
 			//printf(1,"parent is working\n");
 			procdump();
 			sleep(100);
 			*variable=2;
-			//*p =1;
+			*p =1;
 			procdump();
 			wait();
 			wait();
