@@ -105,7 +105,7 @@ int             pipewrite(struct pipe*, char*, int);
 struct proc*    copyproc(struct proc*);
 void            exit(void);
 int             fork(void);
-int 			cowfork(void);
+int 		cowfork(void);
 int             growproc(int);
 int             kill(int);
 void            pinit(void);
@@ -172,15 +172,15 @@ int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
 void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint,uint);
-pde_t*			cpyPgdir(pde_t*,uint);
+pde_t*		cpyPgdir(pde_t*,uint);
 pde_t*          copyuvm(pde_t*, uint);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-void			cow(void);
-int 			returnShareCount(uint);
-int 			initalizeSharedPages(void);
+void		cow(void);
+int 		returnShareCount(uint);
+int 		initalizeSharedPages(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

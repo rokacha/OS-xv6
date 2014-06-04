@@ -382,7 +382,7 @@ cow(){
   if((pte = walkpgdir(proc->pgdir, (void *) faddr, 0)) == 0)
       panic("cow: pte should exist");
   shares=returnShareCount(*pte);
-
+  
   if (shares>0){
     if(!(*pte & PTE_P))
       panic("cow: page not present");
@@ -398,10 +398,14 @@ cow(){
   }
   else
   {
-    if((shares==0) && (*pte & PTE_S))
+    if( faddr>PGSIZE  && (*pte & PTE_S))
     {
       *pte = (*pte | PTE_W )& ~PTE_S;
     }
+    else if (faddr<=PGSIZE)
+	{
+	  panic("NULL (or first page addressed) pointer exception");
+	}
   }
   asm("movl %cr3,%eax");
   asm("movl %eax,%cr3");
