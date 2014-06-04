@@ -126,6 +126,7 @@ sys_link(void)
   begin_trans();
 
   ilock(ip);
+  
   if(ip->type == T_DIR){
     iunlockput(ip);
     commit_trans();
@@ -422,4 +423,60 @@ sys_pipe(void)
   fd[0] = fd0;
   fd[1] = fd1;
   return 0;
+}
+
+int
+sys_symlink(void)
+{
+ char name[DIRSIZ], *new, *old;
+  struct inode *dp, *newp, *ip;
+
+  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+    return -1;
+  if((ip = namei(old)) == 0)
+    return -1;
+
+    
+  begin_trans();
+  
+    
+    if((newp=ialloc(ip->dev,FD_SLINK))==0)
+    {  
+      commit_trans();
+      return-1;
+    }
+    //ilock(ip);
+    memmove(&newp->slink_path,&old,14);
+    //iunlock(ip);
+
+    
+    
+    if((dp = nameiparent(new, name)) == 0)
+      goto bad;
+    ilock(dp);
+    if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+      iunlockput(dp);
+      goto bad;
+    }
+    iunlockput(dp);
+    iput(ip);
+
+  commit_trans();
+
+  return 0;
+
+bad:
+  ilock(ip);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+  commit_trans();
+  return -1;
+}
+
+int
+sys_readlink(void)
+{
+  int ans=0;
+  return ans;
 }

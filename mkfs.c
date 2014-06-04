@@ -17,7 +17,7 @@
 //int size = 1024;
 
 
-int nblocks = 32768;
+int nblocks = 1<<15;
 int nlog = LOGSIZE;
 int ninodes = 200;
 int size = 32840;
@@ -75,6 +75,7 @@ main(int argc, char *argv[])
     exit(1);
   }
 
+  printf("the number is %d\n",sizeof(struct dinode) );
   assert((512 % sizeof(struct dinode)) == 0);
   assert((512 % sizeof(struct dirent)) == 0);
 

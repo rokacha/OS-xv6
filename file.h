@@ -1,5 +1,5 @@
 struct file {
-  enum { FD_NONE, FD_PIPE, FD_INODE } type;
+  enum { FD_NONE, FD_PIPE, FD_INODE ,FD_SLINK} type;
   int ref; // reference count
   char readable;
   char writable;
@@ -11,18 +11,18 @@ struct file {
 
 // in-memory copy of an inode
 struct inode {
-  uint dev;           // Device number
-  uint inum;          // Inode number
-  int ref;            // Reference count
-  int flags;          // I_BUSY, I_VALID
-
-  short type;         // copy of disk inode
+  uint dev;           		// Device number
+  uint inum;          		// Inode number
+  int ref;            		// Reference count
+  int flags;          		// I_BUSY, I_VALID
+  char slink_path[14];		// support for symbolic links
+  short type;         		// copy of disk inode
   short major;
   short minor;
   short nlink;
   uint size;
   uint addrs[NDIRECT+2];
-  uint align[16]; 
+  char align[15*4-14]; 
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

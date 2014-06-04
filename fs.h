@@ -20,19 +20,22 @@ struct superblock {
 };
 
 #define NDIRECT 12
+#define ADDRPERBLOCK (BSIZE / sizeof(uint))
+#define INDEXDOUBLEINDIRECT 13
 #define NINDIRECT (BSIZE / sizeof(uint))
-#define DNINDIRECT (NINDIRECT * NINDIRECT)
-#define MAXFILE (NDIRECT + NINDIRECT +DNINDIRECT)
+#define NDINDIRECT (NINDIRECT * NINDIRECT)
+#define MAXFILE (NDIRECT + NINDIRECT +NDINDIRECT)
 
 // On-disk inode structure
 struct dinode {
+  char slink_path[14];	// support for symbolic links
   short type;           // File type
   short major;          // Major device number (T_DEV only)
   short minor;          // Minor device number (T_DEV only)
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
   uint addrs[NDIRECT+2];
-  uint align[15];   
+  char align[42];   
 };
 
 // Inodes per block.
