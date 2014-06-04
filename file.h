@@ -22,7 +22,7 @@ struct inode {
   short nlink;
   uint size;
   uint addrs[NDIRECT+2];
-  uint align[16]; 
+  uint align[15]; 
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

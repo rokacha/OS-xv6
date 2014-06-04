@@ -20,9 +20,11 @@ struct superblock {
 };
 
 #define NDIRECT 12
+#define ADDRPERBLOCK (BSIZE / sizeof(uint))
+#define INDEXDOUBLEINDIRECT 13
 #define NINDIRECT (BSIZE / sizeof(uint))
-#define DNINDIRECT (NINDIRECT * NINDIRECT)
-#define MAXFILE (NDIRECT + NINDIRECT +DNINDIRECT)
+#define NDINDIRECT (NINDIRECT * NINDIRECT)
+#define MAXFILE (NDIRECT + NINDIRECT +NDINDIRECT)
 
 // On-disk inode structure
 struct dinode {

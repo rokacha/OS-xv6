@@ -17,7 +17,7 @@
 //int size = 1024;
 
 
-int nblocks = 32768;
+int nblocks = 1<<15;
 int nlog = LOGSIZE;
 int ninodes = 200;
 int size = 32840;
