@@ -439,44 +439,53 @@ sys_symlink(void)
     
   begin_trans();
   
-    
+    ilock(ip);
     if((newp=ialloc(ip->dev,FD_SLINK))==0)
     {  
       commit_trans();
       return-1;
     }
-    //ilock(ip);
-    memmove(&newp->slink_path,&old,14);
-    //iunlock(ip);
-
-    
+    newp->type |= FD_SLINK;
+    iupdate(newp);
+    iunlockput(ip);
+    ilock(newp);
+    memmove(&newp->slink_path,&old,14);    
     
     if((dp = nameiparent(new, name)) == 0)
-      goto bad;
+    {
+      iunlockput(newp);
+      commit_trans();
+      return -1;
+    }
+    
     ilock(dp);
-    if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+    if(dp->dev != ip->dev || dirlink(dp, name, newp->inum) < 0){
       iunlockput(dp);
-      goto bad;
+      iunlockput(newp);
+      commit_trans();
+      return -1;
     }
     iunlockput(dp);
-    iput(ip);
-
-  commit_trans();
+    iunlockput(newp);
+    commit_trans();
 
   return 0;
 
-bad:
-  ilock(ip);
-  ip->nlink--;
-  iupdate(ip);
-  iunlockput(ip);
-  commit_trans();
-  return -1;
 }
 
 int
 sys_readlink(void)
 {
-  int ans=0;
-  return ans;
+  char *buf,*pathname;
+  int bufsize;
+  struct inode *ip;
+
+  if(argstr(0, &pathname) < 0 || argstr(1, &buf) || argint(2, &bufsize) < 0)
+    return -1;
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  if(deref_slink(ip,buf,bufsize)!=0)
+    return -1;
+  
+  return 0;
 }

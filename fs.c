@@ -675,3 +675,74 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
+
+int
+deref_slink(struct inode *ip,char* buf ,int bufsize)
+{
+  int depth=0;
+  char *sub_slink;
+  struct inode *newp;
+  ilock(ip);
+  if(!(ip->type & FD_SLINK))
+  {
+      panic("deref_slink: might not be a valid soft link");
+      goto bad;
+  }
+  
+  while((ip->type & FD_SLINK))
+  {
+    if (depth>=16)
+    {
+      panic("deref_slink: soft links are circular or too much depth");
+      goto bad;
+    }
+    sub_slink=ip->slink_path;
+    
+    if((newp = namei(sub_slink)) == 0)
+    {
+      iunlockput(ip);
+      return -1; 
+    }
+    
+    ilock(newp);
+    if(newp->type != FD_SLINK)
+    {
+      cprintf("got that the size of buf is %d\n",sizeof(buf));
+      memmove(buf,sub_slink,min(bufsize,sizeof(buf)));
+      iunlockput(newp);
+      iunlockput(ip);
+      return 0;
+    }
+    iunlockput(ip);
+    ip=newp;
+    iunlockput(newp);
+    ilock(ip);
+  }
+  panic("deref_slink: somthing is wrong");
+  return -1;
+  
+ bad:
+  iunlockput(ip);
+  return -1;
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
