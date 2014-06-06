@@ -280,20 +280,29 @@ create(char *path, short type, short major, short minor)
 int
 sys_open(void)
 {
-  char *path;
+  char *path,newpath[DIRSIZ];
   int fd, omode;
   struct file *f;
   struct inode *ip;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
+  
+  if(!(omode & O_IGNORE))
+  {
+    deref_path(path,newpath);
+    path=newpath;
+  }
+  
   if(omode & O_CREATE){
     begin_trans();
     ip = create(path, T_FILE, 0, 0);
     commit_trans();
     if(ip == 0)
       return -1;
-  } else {
+  } 
+  else 
+  {
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip);
@@ -439,17 +448,11 @@ sys_symlink(void)
     
   begin_trans();
   
-    ilock(ip);
-    if((newp=ialloc(ip->dev,FD_SLINK))==0)
-    {  
-      commit_trans();
-      return-1;
-    }
-    newp->type |= FD_SLINK;
-    iupdate(newp);
-    iunlockput(ip);
+    newp = create(new,T_FILE, 0, 0);
     ilock(newp);
-    memmove(&newp->slink_path,&old,14);    
+    newp->type |= FD_SLINK;
+    memmove(&newp->slink_path,&old,DIRSIZ);    
+    iupdate(newp);
     
     if((dp = nameiparent(new, name)) == 0)
     {

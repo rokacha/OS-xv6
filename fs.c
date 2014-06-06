@@ -628,6 +628,7 @@ skipelem(char *path, char *name)
 // Look up and return the inode for a path name.
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
+// dereference symbolic links and ignore_slink is set to ignore dereferencing
 static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
@@ -676,6 +677,10 @@ nameiparent(char *path, char *name)
   return namex(path, 1, name);
 }
 
+/*
+ * dereferences a symbolic link pointed to by ip, 
+ * puts the deref'ed name in buf (containes bufsize chars)
+ */
 int
 deref_slink(struct inode *ip,char* buf ,int bufsize)
 {
@@ -685,16 +690,18 @@ deref_slink(struct inode *ip,char* buf ,int bufsize)
   ilock(ip);
   if(!(ip->type & FD_SLINK))
   {
-      panic("deref_slink: might not be a valid soft link");
-      goto bad;
+      iunlockput(ip);
+      panic("deref_slink: might not be a valid symbolic link");
+      return -1;
   }
   
   while((ip->type & FD_SLINK))
   {
     if (depth>=16)
     {
-      panic("deref_slink: soft links are circular or too much depth");
-      goto bad;
+        iunlockput(ip);
+      panic("deref_slink: symbolic links are circular or too much depth");
+      return -1;
     }
     sub_slink=ip->slink_path;
     
@@ -707,8 +714,15 @@ deref_slink(struct inode *ip,char* buf ,int bufsize)
     ilock(newp);
     if(newp->type != FD_SLINK)
     {
-      cprintf("got that the size of buf is %d\n",sizeof(buf));
-      memmove(buf,sub_slink,min(bufsize,sizeof(buf)));
+      if(bufsize<strlen(sub_slink))
+      {
+	iunlockput(newp);
+	iunlockput(ip);
+	panic("deref_link: path name is too long to deref");
+	return -1;
+      }
+	
+      memmove(buf,sub_slink,strlen(sub_slink));
       iunlockput(newp);
       iunlockput(ip);
       return 0;
@@ -720,11 +734,37 @@ deref_slink(struct inode *ip,char* buf ,int bufsize)
   }
   panic("deref_slink: somthing is wrong");
   return -1;
+}
+
+int
+deref_path(char* path,char* newpath)
+{
+  char temp[DIRSIZ],*p=path,*tp=temp;
+  struct inode *ip;
   
- bad:
-  iunlockput(ip);
-  return -1;
-  
+  while( skipelem(p,temp)!='\0') //put in temp the name of the first dirent
+  {
+    p=p+strlen(temp); //move to end of current dirent
+    tp=temp+strlen(temp); //move to end of temp
+    if((ip=namei(temp))==0)
+    {
+      return -1
+    }
+    ilock(ip);
+    if(ip->type & FD_SLINK)
+    {
+      memmove(temp,ip->slink_path,DIRSIZ); //coppy right address - change to deref_slink !!
+    }
+    iunlockput(ip);
+    if(path+DIRSIZ-p+strlen(temp)>DIRSIZ)
+    {
+      panic("deref_path : path name too long");
+    }
+    memmove(tp,p,path+DIRSIZ-p);
+    memmove(newpath,temp,DIRSIZ)    
+    
+  }
+  return 0;
 }
 
 

@@ -75,7 +75,7 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-  printf("the number is %d\n",sizeof(struct dinode) );
+  
   assert((512 % sizeof(struct dinode)) == 0);
   assert((512 % sizeof(struct dirent)) == 0);
 
