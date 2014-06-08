@@ -451,7 +451,7 @@ sys_symlink(void)
     newp = create(new,T_FILE, 0, 0);
     ilock(newp);
     newp->type |= FD_SLINK;
-    memmove(&newp->slink_path,&old,DIRSIZ);    
+    memmove(&newp->slink_path,old,DIRSIZ);    
     iupdate(newp);
     
     if((dp = nameiparent(new, name)) == 0)
@@ -466,6 +466,7 @@ sys_symlink(void)
       iunlockput(dp);
       iunlockput(newp);
       commit_trans();
+      cprintf("got here\n");
       return -1;
     }
     iunlockput(dp);
