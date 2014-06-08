@@ -739,30 +739,37 @@ deref_slink(struct inode *ip,char* buf ,int bufsize)
 int
 deref_path(char* path,char* newpath)
 {
-  char temp[DIRSIZ],*p=path,*tp=temp;
+  char temp[DIRSIZ],final_path[DIRSIZ],*fp=final_path;
+  int i;
   struct inode *ip;
   
-  while( skipelem(p,temp)!='\0') //put in temp the name of the first dirent
+  while( skipelem(path,temp)!='\0') //put in temp the name of the first dirent
   {
-    p=p+strlen(temp); //move to end of current dirent
-    tp=temp+strlen(temp); //move to end of temp
     if((ip=namei(temp))==0)
     {
-      return -1
+      return -1;
     }
     ilock(ip);
     if(ip->type & FD_SLINK)
     {
-      memmove(temp,ip->slink_path,DIRSIZ); //coppy right address - change to deref_slink !!
+      deref_slink(ip,temp,DIRSIZ);
     }
     iunlockput(ip);
-    if(path+DIRSIZ-p+strlen(temp)>DIRSIZ)
+    path=path+strlen(temp); //move to end of current dirent
+    
+    if(strlen(final_path)+strlen(path)>DIRSIZ)
     {
       panic("deref_path : path name too long");
+      return -1;
     }
-    memmove(tp,p,path+DIRSIZ-p);
-    memmove(newpath,temp,DIRSIZ)    
     
+    memmove(temp,fp,strlen(temp));
+    fp=fp+strlen(temp);
+    
+    for(i=0;i<DIRSIZ;i++)
+    {
+      temp[i]=0;
+    }
   }
   return 0;
 }
