@@ -740,20 +740,27 @@ int
 deref_path(char* path,char* newpath)
 {
   char temp[DIRSIZ],final_path[DIRSIZ],*fp=final_path;
-  int i;
+  int i,changed;
   struct inode *ip;
+  changed=0;
   
   while( skipelem(path,temp)!='\0') //put in temp the name of the first dirent
   {
+    changed=1;
+    cprintf("temp is : %s\n",temp);
+    
     if((ip=namei(temp))==0)
     {
       return -1;
     }
+    
     ilock(ip);
+    
     if(ip->type & FD_SLINK)
     {
       deref_slink(ip,temp,DIRSIZ);
     }
+    
     iunlockput(ip);
     path=path+strlen(temp); //move to end of current dirent
     
@@ -771,6 +778,15 @@ deref_path(char* path,char* newpath)
       temp[i]=0;
     }
   }
+  if(changed)
+  {
+    memmove(newpath,final_path,DIRSIZ);
+  }
+  else
+  {
+    memmove(newpath,path,DIRSIZ);
+  }
+  
   return 0;
 }
 
