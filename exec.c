@@ -18,8 +18,8 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
 
-  deref_path(path,temppath,1);
-  path=temppath;
+  if(deref_path(path,temppath,1)>=0)
+    path=temppath;
   
   //cprintf("path is %s\n",path);
 

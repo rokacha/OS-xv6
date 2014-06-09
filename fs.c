@@ -688,11 +688,15 @@ deref_slink(struct inode *ip,char* buf)
   int depth=0;
   char *sub_slink;
   struct inode *newp;
+
+  ilock(ip);
+  
   if(!(ip->type & T_SLINK))
   {
+      iunlockput(ip);
       return -1;
   }
-  ilock(ip);
+  
   while((ip->type & T_SLINK))
   {
     if (depth>=16)
@@ -708,7 +712,7 @@ deref_slink(struct inode *ip,char* buf)
     }
     
     ilock(newp);
-    if(newp->type != T_SLINK)
+    if(!(newp->type & T_SLINK))
     {
 	
       strncpy(buf,sub_slink,DIRSIZ);
@@ -733,11 +737,12 @@ deref_path(char* path,char* newpath,uint dereflast)
   char temp[DIRSIZ],final_path[DIRSIZ],*fp=final_path;
   int i;
   struct inode *ip;
-    for(i=0;i<DIRSIZ;i++)
-    {
-      temp[i]=0;
-      final_path[i]=0;
-    }
+  
+  for(i=0;i<DIRSIZ;i++)
+  {
+    temp[i]=0;
+    final_path[i]=0;
+  }
     
   while( strlen(skipelem(path,temp))!=0) //put in temp the name of the first dirent
   { 
@@ -746,11 +751,14 @@ deref_path(char* path,char* newpath,uint dereflast)
       cprintf("deref_path : trying to deref %s withous success(1)\n",temp);
       return -1;
     }
-    
+    ilock(ip);
     if(ip->type & T_SLINK)
     {
+      iunlockput(ip);
       deref_slink(ip,temp);
+      ilock(ip);
     }
+    iunlockput(ip);
 
     path = path+strlen(temp); //move to end of current dirent
     
@@ -777,10 +785,14 @@ deref_path(char* path,char* newpath,uint dereflast)
       cprintf("deref_path : trying to deref %s withous success(2)\n",temp);
       return -1;
     }
+    ilock(ip);
     if(ip->type & T_SLINK)
     {
+      iunlockput(ip);
       deref_slink(ip,temp);
-    }    
+      ilock(ip);
+    }
+    iunlockput(ip);
   }
  
   strncpy(fp,temp,strlen(temp));

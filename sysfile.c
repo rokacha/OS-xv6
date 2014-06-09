@@ -289,8 +289,8 @@ sys_open(void)
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
  
-  deref_path(path,newpath,!(omode & O_IGNORE));
-  path=newpath;
+  if(deref_path(path,newpath,!(omode & O_IGNORE))>=0)
+    path=newpath;
   
   if(omode & O_CREATE){
     begin_trans();
