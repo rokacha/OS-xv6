@@ -471,3 +471,53 @@ sys_readlink(void)
   
   return 0;
 }
+
+int 
+sys_fprot(void)
+{
+  const char *pathname;
+  const char *password;
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+    return -1;
+
+}
+int funprot (void)
+{
+  const char *pathname;
+  const char *password;
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+    return -1;
+  
+}
+int funlock (void)
+{
+  const char *pathname;
+  const char *password;
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+    return -1;
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

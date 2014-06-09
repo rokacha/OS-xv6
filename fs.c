@@ -273,6 +273,7 @@ ilock(struct inode *ip)
 
   if(ip == 0 || ip->ref < 1)
     panic("ilock");
+  
 
   acquire(&icache.lock);
   while(ip->flags & I_BUSY)

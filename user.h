@@ -24,7 +24,9 @@ int sleep(int);
 int uptime(void);
 int symlink(const char*,const char*); 	//oldpath,newpath
 int readlink(const char*,char*,uint);	//pathname,buffer,beffersize
-
+int fprot (const char*,const char*);
+int funprot (const char*,const char*);
+int funlock (const char*,const char*);
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
