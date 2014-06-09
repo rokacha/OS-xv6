@@ -475,27 +475,73 @@ sys_readlink(void)
 int 
 sys_fprot(void)
 {
-  const char *pathname;
-  const char *password;
-  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
-    return -1;
+  char *pathname;
+  char *password;
+  struct inode *ip;
 
-}
-int funprot (void)
-{
-  const char *pathname;
-  const char *password;
   if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
     return -1;
-  
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  if(ip->type!=T_FILE)
+    return -1;
+  if(ip->flags == I_BUSY || ip->lock)
+    return -1;
+  strncpy(ip->pass,password,strlen(password));
+  ip->lock=1;
+  return 0;
 }
-int funlock (void)
+int 
+sys_funprot(void)
 {
-  const char *pathname;
-  const char *password;
+  char *pathname;
+  char *password;
+  struct inode *ip;
   if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
     return -1;
-  
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  if(ip->lock){
+    if(strncmp(ip->pass,password,strlen(ip->pass))!=0)
+      return -1;
+    else
+    {
+      if(ip->pidfunlock>-1)
+      {
+        if(ip->pidfunlock!=proc->pid)
+          return -1;
+        else
+          return 0;
+      }
+      else
+      {
+        ip->lock=0;
+        strncpy(ip->pass,0,strlen(ip->pass));
+      }
+    }
+  }
+  return 0;
+}
+int 
+sys_funlock(void)
+{
+  char *pathname;
+  char *password;
+  struct inode *ip;
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+    return -1;
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  if(ip->lock)
+  {
+    if(strncmp(ip->pass,password,strlen(ip->pass))==0)
+    {
+      ip->pidfunlock=proc->pid;
+    }
+    else
+      return -1;
+  }
+  return 0;
 }
 
 
