@@ -692,7 +692,7 @@ deref_slink(struct inode *ip,char* buf)
   {
       return -1;
   }
-  
+  ilock(ip);
   while((ip->type & T_SLINK))
   {
     if (depth>=16)
@@ -713,6 +713,7 @@ deref_slink(struct inode *ip,char* buf)
 	
       strncpy(buf,sub_slink,DIRSIZ);
       iunlockput(ip);
+      iunlockput(newp);
       return 0;
     }
     
@@ -732,7 +733,6 @@ deref_path(char* path,char* newpath,uint dereflast)
   char temp[DIRSIZ],final_path[DIRSIZ],*fp=final_path;
   int i;
   struct inode *ip;
-   // cprintf("in deref_path: trying to deref %s\n",path);  
     for(i=0;i<DIRSIZ;i++)
     {
       temp[i]=0;
@@ -740,24 +740,18 @@ deref_path(char* path,char* newpath,uint dereflast)
     }
     
   while( strlen(skipelem(path,temp))!=0) //put in temp the name of the first dirent
-  {
-   // cprintf("temp is : %s\n",temp);
-    
+  { 
     if((ip=namei(temp))==0)
     {
       cprintf("deref_path : trying to deref %s withous success(1)\n",temp);
       return -1;
     }
     
-    ilock(ip);
-    
     if(ip->type & T_SLINK)
     {
       deref_slink(ip,temp);
     }
-    
-    iunlockput(ip);
-    
+
     path = path+strlen(temp); //move to end of current dirent
     
     if(strlen(final_path)+strlen(path)>DIRSIZ)
@@ -774,10 +768,8 @@ deref_path(char* path,char* newpath,uint dereflast)
     for(i=0;i<DIRSIZ;i++)
     {
       temp[i]=0;
-    }
-    
+    } 
   }
-  
   if(dereflast)
   {
     if((ip=namei(temp))==0)
@@ -785,20 +777,14 @@ deref_path(char* path,char* newpath,uint dereflast)
       cprintf("deref_path : trying to deref %s withous success(2)\n",temp);
       return -1;
     }
-    
-    ilock(ip);
-    
     if(ip->type & T_SLINK)
     {
       deref_slink(ip,temp);
-    }
-    iunlockput(ip);
-    
+    }    
   }
  
   strncpy(fp,temp,strlen(temp));
   strncpy(newpath,final_path,DIRSIZ);
-  //cprintf("final derefed path is : %s\n",newpath);
   return 0;
 }
 
