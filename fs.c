@@ -679,90 +679,86 @@ nameiparent(char *path, char *name)
 
 /*
  * dereferences a symbolic link pointed to by ip, 
- * puts the deref'ed name in buf (containes bufsize chars)
+ * puts the deref'ed name in buf (must be DIRSIZ chars)
+ * asumes ip is locked
  */
 int
-deref_slink(struct inode *ip,char* buf ,int bufsize)
+deref_slink(struct inode *ip,char* buf)
 {
   int depth=0;
   char *sub_slink;
   struct inode *newp;
-  ilock(ip);
-  if(!(ip->type & FD_SLINK))
+  if(!(ip->type & T_SLINK))
   {
-      iunlockput(ip);
-      panic("deref_slink: might not be a valid symbolic link");
       return -1;
   }
   
-  while((ip->type & FD_SLINK))
+  while((ip->type & T_SLINK))
   {
     if (depth>=16)
     {
-        iunlockput(ip);
       panic("deref_slink: symbolic links are circular or too much depth");
-      return -1;
     }
+    
     sub_slink=ip->slink_path;
     
     if((newp = namei(sub_slink)) == 0)
     {
-      iunlockput(ip);
-      return -1; 
+      panic("deref_slink : broken symbolic link");
     }
     
     ilock(newp);
-    if(newp->type != FD_SLINK)
+    if(newp->type != T_SLINK)
     {
-      if(bufsize<strlen(sub_slink))
-      {
-	iunlockput(newp);
-	iunlockput(ip);
-	panic("deref_link: path name is too long to deref");
-	return -1;
-      }
 	
-      memmove(buf,sub_slink,strlen(sub_slink));
-      iunlockput(newp);
+      strncpy(buf,sub_slink,DIRSIZ);
       iunlockput(ip);
       return 0;
     }
+    
     iunlockput(ip);
     ip=newp;
     iunlockput(newp);
     ilock(ip);
   }
+  
   panic("deref_slink: somthing is wrong");
   return -1;
 }
 
 int
-deref_path(char* path,char* newpath)
+deref_path(char* path,char* newpath,uint dereflast)
 {
   char temp[DIRSIZ],final_path[DIRSIZ],*fp=final_path;
-  int i,changed;
+  int i;
   struct inode *ip;
-  changed=0;
-  
-  while( skipelem(path,temp)!='\0') //put in temp the name of the first dirent
+   // cprintf("in deref_path: trying to deref %s\n",path);  
+    for(i=0;i<DIRSIZ;i++)
+    {
+      temp[i]=0;
+      final_path[i]=0;
+    }
+    
+  while( strlen(skipelem(path,temp))!=0) //put in temp the name of the first dirent
   {
-    changed=1;
-    cprintf("temp is : %s\n",temp);
+   // cprintf("temp is : %s\n",temp);
     
     if((ip=namei(temp))==0)
     {
+      cprintf("deref_path : trying to deref %s withous success(1)\n",temp);
       return -1;
     }
     
     ilock(ip);
     
-    if(ip->type & FD_SLINK)
+    if(ip->type & T_SLINK)
     {
-      deref_slink(ip,temp,DIRSIZ);
+      deref_slink(ip,temp);
     }
     
     iunlockput(ip);
-    path=path+strlen(temp); //move to end of current dirent
+    
+    path = path+strlen(temp); //move to end of current dirent
     
     if(strlen(final_path)+strlen(path)>DIRSIZ)
     {
@@ -770,23 +766,39 @@ deref_path(char* path,char* newpath)
       return -1;
     }
     
-    memmove(temp,fp,strlen(temp));
+    strncpy(fp,temp,strlen(temp));
     fp=fp+strlen(temp);
+    fp[0]='/';
+    fp++;
     
     for(i=0;i<DIRSIZ;i++)
     {
       temp[i]=0;
     }
-  }
-  if(changed)
-  {
-    memmove(newpath,final_path,DIRSIZ);
-  }
-  else
-  {
-    memmove(newpath,path,DIRSIZ);
+    
   }
   
+  if(dereflast)
+  {
+    if((ip=namei(temp))==0)
+    {
+      cprintf("deref_path : trying to deref %s withous success(2)\n",temp);
+      return -1;
+    }
+    
+    ilock(ip);
+    
+    if(ip->type & T_SLINK)
+    {
+      deref_slink(ip,temp);
+    }
+    iunlockput(ip);
+    
+  }
+ 
+  strncpy(fp,temp,strlen(temp));
+  strncpy(newpath,final_path,DIRSIZ);
+  //cprintf("final derefed path is : %s\n",newpath);
   return 0;
 }
 

@@ -280,19 +280,17 @@ create(char *path, short type, short major, short minor)
 int
 sys_open(void)
 {
-  char *path,newpath[DIRSIZ];
+  char *path;
+  char newpath[DIRSIZ];
   int fd, omode;
   struct file *f;
   struct inode *ip;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-  
-  if(!(omode & O_IGNORE))
-  {
-    deref_path(path,newpath);
-    path=newpath;
-  }
+ 
+  deref_path(path,newpath,!(omode & O_IGNORE));
+  path=newpath;
   
   if(omode & O_CREATE){
     begin_trans();
@@ -437,42 +435,22 @@ sys_pipe(void)
 int
 sys_symlink(void)
 {
- char name[DIRSIZ], *new, *old;
-  struct inode *dp, *newp, *ip;
+ char *new, *old;
+  struct inode *newp;
 
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
-  if((ip = namei(old)) == 0)
-    return -1;
-
-    
-  begin_trans();
   
-    newp = create(new,T_FILE, 0, 0);
-    ilock(newp);
-    newp->type |= FD_SLINK;
-    memmove(&newp->slink_path,old,DIRSIZ);    
-    iupdate(newp);
-    
-    if((dp = nameiparent(new, name)) == 0)
-    {
-      iunlockput(newp);
-      commit_trans();
-      return -1;
-    }
-    
-    ilock(dp);
-    if(dp->dev != ip->dev || dirlink(dp, name, newp->inum) < 0){
-      iunlockput(dp);
-      iunlockput(newp);
-      commit_trans();
-      cprintf("got here\n");
-      return -1;
-    }
-    iunlockput(dp);
-    iunlockput(newp);
-    commit_trans();
+  begin_trans();
 
+  if((newp = create(new,T_SLINK, 0, 0))==0)
+    panic("couldnt create");
+  //ilock(newp);
+  strncpy(newp->slink_path,old,DIRSIZ);
+  iupdate(newp);  
+  iunlockput(newp);
+  commit_trans();
+  
   return 0;
 
 }
@@ -488,7 +466,7 @@ sys_readlink(void)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
-  if(deref_slink(ip,buf,bufsize)!=0)
+  if(deref_slink(ip,buf)!=0)
     return -1;
   
   return 0;

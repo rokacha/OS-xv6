@@ -50,8 +50,8 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
-int		deref_slink(struct inode *,char*,int);
-int		deref_path(char*,char*);
+int		deref_slink(struct inode *,char*);
+int		deref_path(char*,char*,uint);
 
 // ide.c
 void            ideinit(void);
