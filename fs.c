@@ -751,14 +751,8 @@ deref_path(char* path,char* newpath,uint dereflast)
       cprintf("deref_path : trying to deref %s withous success(1)\n",temp);
       return -1;
     }
-    ilock(ip);
-    if(ip->type & T_SLINK)
-    {
-      iunlockput(ip);
-      deref_slink(ip,temp);
-      ilock(ip);
-    }
-    iunlockput(ip);
+
+    deref_slink(ip,temp);
 
     path = path+strlen(temp); //move to end of current dirent
     
@@ -785,14 +779,7 @@ deref_path(char* path,char* newpath,uint dereflast)
       cprintf("deref_path : trying to deref %s withous success(2)\n",temp);
       return -1;
     }
-    ilock(ip);
-    if(ip->type & T_SLINK)
-    {
-      iunlockput(ip);
-      deref_slink(ip,temp);
-      ilock(ip);
-    }
-    iunlockput(ip);
+    deref_slink(ip,temp);
   }
  
   strncpy(fp,temp,strlen(temp));

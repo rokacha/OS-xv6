@@ -366,11 +366,20 @@ sys_mknod(void)
 int
 sys_chdir(void)
 {
-  char *path;
+  char *path,newpath[14];
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
+  if(argstr(0, &path) < 0)
     return -1;
+  
+  if(deref_path(path,newpath,1)>=0)
+    path = newpath;
+    
+  
+  if((ip = namei(path)) == 0)
+    return -1;
+  
+  
   ilock(ip);
   if(ip->type != T_DIR){
     iunlockput(ip);

@@ -5,7 +5,7 @@
 int
 main(int argc, char *argv[])
 {
-  
+  char buf[14];
   if(argc < 3 || argc > 4 || (argc == 4 && (strcmp(argv[1],"-s") !=0)))
   {
     printf(2, "Usage: ln [OPT] old new\n");
@@ -26,7 +26,8 @@ main(int argc, char *argv[])
     }
     
   }
-  
+  readlink(argv[3],buf,14);
+  printf(1,"the new link points to %s\n",buf);
   exit();
   
 }
