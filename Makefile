@@ -162,6 +162,7 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_sanity\
+	_sanity2\
 
 
 fs.img: mkfs README $(UPROGS)

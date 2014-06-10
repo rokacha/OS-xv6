@@ -22,7 +22,10 @@ struct inode {
   short nlink;
   uint size;
   uint addrs[NDIRECT+2];
-  char align[15*4-14]; 
+  char pass[10];
+  char lock;
+  uint pidfunlock;
+  char align[53]; 
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

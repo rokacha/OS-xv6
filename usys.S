@@ -31,3 +31,7 @@ SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(symlink)
 SYSCALL(readlink)
+SYSCALL(fprot)
+SYSCALL(funprot)
+SYSCALL(funlock)
+  

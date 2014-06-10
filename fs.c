@@ -247,6 +247,9 @@ iget(uint dev, uint inum)
   ip->inum = inum;
   ip->ref = 1;
   ip->flags = 0;
+  ip->lock=0;
+  strncpy(ip->pass,0,strlen(ip->pass));
+  ip->pidfunlock=-1;
   release(&icache.lock);
 
   return ip;
@@ -273,6 +276,7 @@ ilock(struct inode *ip)
 
   if(ip == 0 || ip->ref < 1)
     panic("ilock");
+
 
   acquire(&icache.lock);
   while(ip->flags & I_BUSY)
