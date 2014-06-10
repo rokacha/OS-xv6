@@ -492,13 +492,20 @@ sys_fprot(void)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
+  ilock(ip);
   if(ip->type!=T_FILE)
-    return -1;
+    goto bad;
   if(ip->flags == I_BUSY || ip->lock)
-    return -1;
+    goto bad;
   strncpy(ip->pass,password,strlen(password));
   ip->lock=1;
+  iupdate(ip);
+  iunlockput(ip);
   return 0;
+  
+  bad:
+  iunlockput(ip);
+  return -1;
 }
 int 
 sys_funprot(void)
@@ -510,27 +517,38 @@ sys_funprot(void)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
-  if(ip->lock){
-    if(strncmp(ip->pass,password,strlen(ip->pass))!=0)
-      return -1;
+  ilock(ip);
+  
+  if(ip->lock)
+  {
+    if(strncmp(ip->pass,password,strlen(password))!=0)
+      goto bad;
     else
     {
       if(ip->pidfunlock>-1)
       {
         if(ip->pidfunlock!=proc->pid)
-          return -1;
+          goto bad;
         else
-          return 0;
+	{
+	  iunlockput(ip);
+	}
       }
       else
       {
         ip->lock=0;
-        strncpy(ip->pass,0,strlen(ip->pass));
+        memset(ip->pass,'\0',strlen(ip->pass));
+	iupdate(ip);
+	iunlockput(ip);
       }
     }
   }
   return 0;
+  bad:
+  iunlockput(ip);
+  return -1;
 }
+
 int 
 sys_funlock(void)
 {
@@ -541,15 +559,21 @@ sys_funlock(void)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
+  ilock(ip);
   if(ip->lock)
   {
     if(strncmp(ip->pass,password,strlen(ip->pass))==0)
     {
       ip->pidfunlock=proc->pid;
+      iupdate(ip);
     }
     else
+    {
+      iunlockput(ip);
       return -1;
+    }
   }
+  iunlockput(ip);
   return 0;
 }
 
