@@ -524,25 +524,31 @@ sys_funprot(void)
     if(strncmp(ip->pass,password,strlen(password))!=0)
       goto bad;
     else
-    {
-      if(ip->pidfunlock>-1)
-      {
-        if(ip->pidfunlock!=proc->pid)
-          goto bad;
-        else
-	{
-	  iunlockput(ip);
-	}
-      }
-      else
-      {
-        ip->lock=0;
-        memset(ip->pass,'\0',strlen(ip->pass));
-	iupdate(ip);
-	iunlockput(ip);
-      }
-    }
+        {
+          if(!ip->proclock)
+            {
+              ip->lock=0;
+              memset(ip->pass,'\0',strlen(ip->pass));
+              iupdate(ip);
+            }
+            else
+            {
+              if(getfunlock(ip->inum,proc->pid))
+              {
+                unlockInum(ip->inum);
+                ip->proclock=0;
+                ip->lock=0;
+                memset(ip->pass,'\0',strlen(ip->pass));
+                iupdate(ip);
+              }
+              else
+                goto bad;
+            }
+          
+        }
+      
   }
+  iunlockput(ip);
   return 0;
   bad:
   iunlockput(ip);
@@ -564,7 +570,8 @@ sys_funlock(void)
   {
     if(strncmp(ip->pass,password,strlen(ip->pass))==0)
     {
-      ip->pidfunlock=proc->pid;
+      ip->proclock=1;
+      setfunlock(ip->inum,proc->pid,1);
       iupdate(ip);
     }
     else

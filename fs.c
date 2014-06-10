@@ -249,7 +249,7 @@ iget(uint dev, uint inum)
   ip->flags = 0;
   ip->lock=0;
   strncpy(ip->pass,0,strlen(ip->pass));
-  ip->pidfunlock=-1;
+  ip->proclock=0;
   release(&icache.lock);
 
   return ip;
@@ -643,6 +643,37 @@ namex(char *path, int nameiparent, char *name)
   else
     ip = idup(proc->cwd);
 
+  if(ip->lock)
+  {
+      if(ip->proclock)
+        {
+          int i,x=0;
+          for(i=0;i<64;i++)
+            {
+              if(getfunlock(ip->inum,proc->pid))
+                {
+                  x=1;
+                  break;
+                }
+            }
+          if(x)
+            {
+              if(!getfunlock(ip->inum,proc->pid))
+                return 0;
+            }
+          else
+            {
+              ip->proclock=0;
+              return 0;
+            }
+        }
+      else
+      {
+        return 0;
+      }
+      
+  }
+    
   while((path = skipelem(path, name)) != 0){
     ilock(ip);
     if(ip->type != T_DIR){
@@ -790,7 +821,6 @@ deref_path(char* path,char* newpath,uint dereflast)
   strncpy(newpath,final_path,DIRSIZ);
   return 0;
 }
-
 
 
 

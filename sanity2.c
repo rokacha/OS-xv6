@@ -6,15 +6,15 @@ char buf[32];
 int
 main(int argc, char *argv[])
 {
-	int fd;
+	int fd,n;
 	//struct inode *ip=namei(argv[1]);
 	fprot(argv[1],argv[2]);
 	if(fork()==0)
 	{
-		funprot(argv[1],argv[2]);
+		funlock(argv[1],argv[2]);
 		fd=open(argv[1],O_RDONLY);
-		read(fd, buf, sizeof(buf));
-		printf(1,"%s\n", buf);
+		n=read(fd, buf, sizeof(buf));
+		write(1,buf,n);
 		close(fd);
 	}
 	else

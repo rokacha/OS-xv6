@@ -20,11 +20,17 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
-
+int funlock[200][NPROC];
 void
 pinit(void)
 {
+  int i,j;
   initlock(&ptable.lock, "ptable");
+  for(i=0;i<200;i++)
+  {
+    for(j=0;j<NPROC;j++)
+        funlock[i][j]=0;
+  }
 }
 
 //PAGEBREAK: 32
@@ -158,6 +164,14 @@ fork(void)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+
+
+  for(i=0;i<200;i++)
+  {
+    if(getfunlock(i,proc->pid))
+        setfunlock(i,np->pid,1);
+  }
+
   return pid;
 }
 
@@ -180,7 +194,11 @@ exit(void)
       proc->ofile[fd] = 0;
     }
   }
-
+  int i;
+  for(i=0;i<200;i++)
+  {
+    setfunlock(i,proc->pid,0);
+  }
   iput(proc->cwd);
   proc->cwd = 0;
 
@@ -435,6 +453,29 @@ kill(int pid)
   }
   release(&ptable.lock);
   return -1;
+}
+
+
+
+int
+getfunlock(int i,int j)
+{
+  return funlock[i][j];
+}
+
+
+void
+setfunlock(int i,int j,int x)
+{
+  funlock[i][j]=x;
+}
+
+void
+unlockInum(int inum)
+{
+  int i;
+  for(i=0;i<NPROC;i++)
+    funlock[inum][i]=0;
 }
 
 //PAGEBREAK: 36

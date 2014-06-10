@@ -24,7 +24,7 @@ struct inode {
   uint addrs[NDIRECT+2];
   char pass[10];
   char lock;
-  uint pidfunlock;
+  uint proclock;
   char align[53]; 
 };
 #define I_BUSY 0x1
