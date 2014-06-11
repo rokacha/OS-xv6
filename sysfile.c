@@ -288,9 +288,10 @@ sys_open(void)
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
- 
-  if(deref_path(path,newpath,!(omode & O_IGNORE))>=0)
+  cprintf("sys_open : before deref %s\n",path);
+  if(deref_path(path,newpath,!(omode & O_IGNORE))!=-1)
     path=newpath;
+  cprintf("sys_open : after deref: %s\n",path);
   
   if(omode & O_CREATE){
     begin_trans();
@@ -304,10 +305,12 @@ sys_open(void)
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip);
+    
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       return -1;
     }
+    cprintf("sys_open : got HERE\n");
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){

@@ -2,8 +2,9 @@
 #include "stat.h"
 #include "user.h"
 #include "fs.h"
+#include "fcntl.h"
 
-uint follow=0,checkname=0,checksize=0,checktype=0,type=T_FILE,help=0;
+uint follow=0,checkname=0,checksize=0,checktype=0,type=T_FILE;
 int size,sizedirection=0;
 char path[14]={'\0'};
 
@@ -28,7 +29,7 @@ help_function()
 int
 check(struct dirent de,struct stat st)
 {
-  int pass_name=1,pass_type=1,pass_size=1;
+  int pass_name=0,pass_type=0,pass_size=0;
   
   if(checkname)
   {
@@ -40,58 +41,81 @@ check(struct dirent de,struct stat st)
   }
   if(checksize)
   {
-    
+    switch(sizedirection)
+    {
+      case 1:
+	pass_size=(st.size > size);
+      break;
+      case -1:
+	pass_size=(st.size < size);
+      break;
+      default:
+	pass_size=(st.size==size);
+      break;
+    }
   }
-  
-  return pass_name && pass_type && pass_size;
+  return (!checkname || (checkname && pass_name )) && (!checktype || (checktype && pass_type))
+	  && (!checksize || (checksize && pass_size));
 }
+
+
 void
 f_find(char* start_path)
 {
-  char buf[512], *p;
-  int fd;
+  char full_path[DIRSIZ]={'\0'},*p;
+  int fd, newfd;
   struct dirent de;
-  struct stat st;
+  struct stat st,newst;
   
-  if((fd = open(path, 0)) < 0){
-    printf(2, "ls: cannot open %s\n", path);
+  printf(1,"got start_path = %s\n",start_path);
+  
+  if((fd = open(start_path, (follow) ? O_RDONLY: O_RDONLY | O_IGNORE)) < 0){
+    printf(2, "find: cannot open %s\n", start_path);
     return;
   }
   
   if(fstat(fd, &st) < 0){
-    printf(2, "ls: cannot stat %s\n", path);
+    printf(2, "find: cannot stat %s\n", start_path);
     close(fd);
     return;
   }
   
-  switch(st.type){
-  case T_FILE:
-    //printf(1, "%s %d %d %d\n", fmtname(path), st.type, st.ino, st.size);
-    break;
-  
-  case T_DIR:
-    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
-      printf(1, "ls: path too long\n");
-      break;
-    }
-    strcpy(buf, path);
-    p = buf+strlen(buf);
-    *p++ = '/';
-    while(read(fd, &de, sizeof(de)) == sizeof(de)){
-      if(de.inum == 0)
-        continue;
-      memmove(p, de.name, DIRSIZ);
-      p[DIRSIZ] = 0;
-      if(stat(buf, &st) < 0){
-        printf(1, "ls: cannot stat %s\n", buf);
-        continue;
+printf(1,"got HERE\n");
+    while(read(fd, &de, sizeof(de)) == sizeof(de))
+    {
+      if((de.inum == 0) || (strcmp(de.name,"..")==0)||(strcmp(de.name,".")==0))
+        continue;  
+      
+      if((newfd = open(de.name, (follow) ? O_RDONLY: O_RDONLY | O_IGNORE)) < 0)
+      {
+	printf(2, "find: cannot access %s\n", de.name);
+	continue;  
+      }    
+      if(fstat(newfd , &newst) < 0)
+      {
+      printf(2, "find: cannot stat %s\n", de.name);
+      close(newfd);
+      continue;  
       }
-      //printf(1, "%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+      strcpy(full_path,start_path);
+      p=full_path+strlen(full_path);
+      p[0]='\0';
+      switch(newst.type)
+      {
+	case T_DIR:
+	  
+	  if(check(de,newst))
+	    printf(1,"%d\n",full_path);
+	  f_find(full_path);
+	break;
+	default:
+	  if(check(de,newst))
+	    printf(1,"%d\n",full_path);
+	break;	  
+      }
+      close(newfd);  
     }
-    break;
-  }
   close(fd);
-  exit();
 }
 
 int
@@ -105,7 +129,8 @@ main(int argc, char *argv[])
   {
     checkname=1;
     strcpy(path,argv[1]);
-    f_find("/");
+    f_find(".");
+    exit();
   }
 
   if(strcmp(argv[1],"-help")==0)

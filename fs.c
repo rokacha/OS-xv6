@@ -1,4 +1,4 @@
-// File system implementation.  Five layers:
+// /*File*/ system implementation.  Five layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Log: crash recovery for multi-step updates.
 //   + Files: inode allocator, reading, writing, metadata.
@@ -748,18 +748,18 @@ deref_path(char* path,char* newpath,uint dereflast)
     final_path[i]=0;
   }
     
-  while( strlen(skipelem(path,temp))!=0) //put in temp the name of the first dirent
+  while( (char*)skipelem(path,temp)!='\0') //put in temp the name of the first dirent
   { 
     if((ip=namei(temp))==0)
     {
-      cprintf("deref_path : trying to deref %s withous success(1)\n",temp);
+     // cprintf("deref_path : trying to deref %s withous success(1)\n",temp);
       return -1;
     }
 
     deref_slink(ip,temp);
 
     path = path+strlen(temp); //move to end of current dirent
-    
+    //cprintf("deref_path : final_path is %s and path is %s and temp is %s\n",final_path,path,temp);
     if(strlen(final_path)+strlen(path)>DIRSIZ)
     {
       panic("deref_path : path name too long");
@@ -780,13 +780,16 @@ deref_path(char* path,char* newpath,uint dereflast)
   {
     if((ip=namei(temp))==0)
     {
-      cprintf("deref_path : trying to deref %s withous success(2)\n",temp);
+      //cprintf("deref_path : trying to deref %s withous success(2)\n",temp);
       return -1;
     }
     deref_slink(ip,temp);
   }
- 
   strncpy(fp,temp,strlen(temp));
+  fp+=strlen(temp);
+  if(fp[-1]=='/')
+    fp[-1]='\0';
+  //cprintf("%s\n",final_path);
   strncpy(newpath,final_path,DIRSIZ);
   return 0;
 }
