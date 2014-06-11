@@ -15,7 +15,7 @@ struct inode {
   uint inum;          		// Inode number
   int ref;            		// Reference count
   int flags;          		// I_BUSY, I_VALID
-  char slink_path[14];		// support for symbolic links
+  //char slink_path[14];		// support for symbolic links
   short type;         		// copy of disk inode
   short major;
   short minor;
@@ -24,7 +24,7 @@ struct inode {
   uint addrs[NDIRECT+2];
   char pass[10];
   char lock;
-  char align[57]; 
+  char align[71]; 
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

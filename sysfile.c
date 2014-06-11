@@ -281,19 +281,14 @@ int
 sys_open(void)
 {
   char *path;
-  char newpath[DIRSIZ];
+  
   int fd, omode;
   struct file *f;
   struct inode *ip;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-
- if(!(omode & O_IGNORE))
-    if(deref_path(path,newpath,!(omode & O_IGNORE))>=0)
-        path=newpath;
-
-  
+cprintf("sys_open : omode state is %d\n",omode);
   if(omode & O_CREATE){
     begin_trans();
     ip = create(path, T_FILE, 0, 0);
@@ -303,24 +298,34 @@ sys_open(void)
   } 
   else 
   {
-    if((ip = namei(path)) == 0)
-      return -1;
+    cprintf("sys_open : path is %s and ignore state is %d\n",path,omode & O_IGNORE);
+    if((omode & O_IGNORE) !=0)
+    {
+      if((ip = namei_ignore_slink(path)) == 0)
+	return -1;
+    }
+    else
+    {
+      if((ip = namei(path)) == 0)
+	return -1;
+    }
+    
     ilock(ip);
 
-    cprintf("v: %d\n",getlocked_files(ip->inum,proc->pid));
     if(ip->lock)
     {
       if(getlocked_files(ip->inum,proc->pid)==0)//locked for me
-        {
-          iunlockput(ip);
-          return -1;
-        }
+      {
+        iunlockput(ip);
+        return -1;
       }
-    if(ip->type == T_DIR && (omode != O_RDONLY && omode!= O_IGNORE)){
+    }
+  
+    if(ip->type == T_DIR && ((omode & O_RDONLY)!=0) ){
       iunlockput(ip);
       return -1;
     }
-    cprintf("sys_open : got HERE\n");
+
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
@@ -379,16 +384,17 @@ sys_mknod(void)
 int
 sys_chdir(void)
 {
-  char *path,newpath[14];
+  char *path;
+  //char newpath[14];
   struct inode *ip;
 
   if(argstr(0, &path) < 0)
     return -1;
-  
+/*  
   if(deref_path(path,newpath,1)>=0)
     path = newpath;
     
-  
+  */
   if((ip = namei(path)) == 0)
     return -1;
 
@@ -459,43 +465,56 @@ sys_pipe(void)
   return 0;
 }
 
+
 int
 sys_symlink(void)
 {
- char *new, *old;
-  struct inode *newp;
-
+  char *old, *new;
+  struct inode *ip;
+  
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
   
   begin_trans();
-
-  if((newp = create(new,T_SLINK, 0, 0))==0)
-    panic("couldnt create");
-  //ilock(newp);
-  strncpy(newp->slink_path,old,DIRSIZ);
-  iupdate(newp);  
-  iunlockput(newp);
+  
+  if((ip = create(new,  T_SLINK, 0, 0)) == 0)
+    return -1;
+  
+  writei(ip, old, 0, strlen(old));
+  iunlockput(ip);
   commit_trans();
   
   return 0;
-
 }
 
 int
 sys_readlink(void)
 {
   char *buf,*pathname;
-  int bufsize;
+  int bufsize,i;
   struct inode *ip;
 
   if(argstr(0, &pathname) < 0 || argstr(1, &buf) || argint(2, &bufsize) < 0)
     return -1;
-  if((ip = namei(pathname)) == 0)
+  char tbuf[bufsize+1];
+  for(i=0;i<bufsize+1;i++)
+    tbuf[i]='\0';
+  if((ip = namei_ignore_slink(pathname)) == 0)
     return -1;
-  if(deref_slink(ip,buf)!=0)
-    return -1;
-  
+  ilock(ip);
+  while(ip->type == T_SLINK)
+  {
+    i=readi(ip, tbuf, 0, bufsize);
+    tbuf[i]=0;
+    //cprintf("sys_readlink: tbuf is %s\n",tbuf);
+    iunlockput(ip);
+    if((ip = namei_ignore_slink(tbuf)) == 0)
+      return -1;
+    ilock(ip);
+  }
+  iunlockput(ip);
+  memmove(buf,tbuf,bufsize);
+ 
   return 0;
 }
 

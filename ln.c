@@ -26,6 +26,7 @@ main(int argc, char *argv[])
     }
     
   }
+  printf(1,"ln : before readlink\n");
   readlink(argv[3],buf,14);
   printf(1,"the new link points to %s\n",buf);
   exit();
