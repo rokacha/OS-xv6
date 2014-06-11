@@ -20,7 +20,9 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
-int funlock[200][NPROC];
+
+int locked_files[200][NPROC];
+
 void
 pinit(void)
 {
@@ -29,7 +31,7 @@ pinit(void)
   for(i=0;i<200;i++)
   {
     for(j=0;j<NPROC;j++)
-        funlock[i][j]=0;
+        locked_files[i][j]=0;
   }
 }
 
@@ -168,8 +170,8 @@ fork(void)
 
   for(i=0;i<200;i++)
   {
-    if(getfunlock(i,proc->pid))
-        setfunlock(i,np->pid,1);
+    if(getlocked_files(i,proc->pid))
+        setlocked_files(i,np->pid,1);
   }
 
   return pid;
@@ -197,7 +199,7 @@ exit(void)
   int i;
   for(i=0;i<200;i++)
   {
-    setfunlock(i,proc->pid,0);
+    setlocked_files(i,proc->pid,0);
   }
   iput(proc->cwd);
   proc->cwd = 0;
@@ -458,16 +460,16 @@ kill(int pid)
 
 
 int
-getfunlock(int i,int j)
+getlocked_files(int i,int j)
 {
-  return funlock[i][j];
+  return locked_files[i][j];
 }
 
 
 void
-setfunlock(int i,int j,int x)
+setlocked_files(int i,int j,int x)
 {
-  funlock[i][j]=x;
+  locked_files[i][j]=x;
 }
 
 void
@@ -475,8 +477,10 @@ unlockInum(int inum)
 {
   int i;
   for(i=0;i<NPROC;i++)
-    funlock[inum][i]=0;
+    locked_files[inum][i]=0;
 }
+
+
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.

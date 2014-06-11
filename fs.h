@@ -37,8 +37,7 @@ struct dinode {
   uint addrs[NDIRECT+2];
   char pass[10];
   char lock;
-  uint proclock;
-  char align[27];   
+  char align[31];   
 };
 
 // Inodes per block.
