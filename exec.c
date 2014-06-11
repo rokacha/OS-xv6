@@ -26,6 +26,11 @@ exec(char *path, char **argv)
   if((ip = namei(path)) == 0)
     return -1;
   ilock(ip);
+  if(checklock(ip)<0)
+   {
+     iunlockput(ip);
+     return -1;
+   }
   pgdir = 0;
 
   // Check ELF header

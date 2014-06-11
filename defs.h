@@ -52,7 +52,7 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 int		deref_slink(struct inode *,char*);
 int		deref_path(char*,char*,uint);
-
+int 			checklock(struct inode*);
 // ide.c
 void            ideinit(void);
 void            ideintr(void);
@@ -118,6 +118,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int				getlocked_files(int,int);
+void			setlocked_files(int,int,int);
+void			unlockInum(int); 
 
 // swtch.S
 void            swtch(struct context**, struct context*);

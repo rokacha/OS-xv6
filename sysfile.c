@@ -288,10 +288,11 @@ sys_open(void)
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-  cprintf("sys_open : before deref %s\n",path);
-  if(deref_path(path,newpath,!(omode & O_IGNORE))!=-1)
-    path=newpath;
-  cprintf("sys_open : after deref: %s\n",path);
+
+ if(!(omode & O_IGNORE))
+    if(deref_path(path,newpath,!(omode & O_IGNORE))>=0)
+        path=newpath;
+
   
   if(omode & O_CREATE){
     begin_trans();
@@ -305,8 +306,17 @@ sys_open(void)
     if((ip = namei(path)) == 0)
       return -1;
     ilock(ip);
-    
-    if(ip->type == T_DIR && omode != O_RDONLY){
+
+    cprintf("v: %d\n",getlocked_files(ip->inum,proc->pid));
+    if(ip->lock)
+    {
+      if(getlocked_files(ip->inum,proc->pid)==0)//locked for me
+        {
+          iunlockput(ip);
+          return -1;
+        }
+      }
+    if(ip->type == T_DIR && (omode != O_RDONLY && omode!= O_IGNORE)){
       iunlockput(ip);
       return -1;
     }
@@ -381,9 +391,14 @@ sys_chdir(void)
   
   if((ip = namei(path)) == 0)
     return -1;
-  
-  
+
   ilock(ip);
+  if(checklock(ip)<0)
+   {
+     iunlockput(ip);
+     return -1;
+   }
+  
   if(ip->type != T_DIR){
     iunlockput(ip);
     return -1;
@@ -487,11 +502,10 @@ sys_readlink(void)
 int 
 sys_fprot(void)
 {
-  char *pathname;
-  char *password;
+  char pathname[DIRSIZ],password[10];
   struct inode *ip;
 
-  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
@@ -513,10 +527,10 @@ sys_fprot(void)
 int 
 sys_funprot(void)
 {
-  char *pathname;
-  char *password;
+  char pathname[DIRSIZ],password[10];
   struct inode *ip;
-  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+
+  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
@@ -527,25 +541,15 @@ sys_funprot(void)
     if(strncmp(ip->pass,password,strlen(password))!=0)
       goto bad;
     else
-    {
-      if(ip->pidfunlock>-1)
-      {
-        if(ip->pidfunlock!=proc->pid)
-          goto bad;
-        else
-	{
-	  iunlockput(ip);
-	}
-      }
-      else
-      {
-        ip->lock=0;
-        memset(ip->pass,'\0',strlen(ip->pass));
-	iupdate(ip);
-	iunlockput(ip);
-      }
-    }
+        {
+          ip->lock=0;
+          memset(ip->pass,'\0',strlen(ip->pass));
+          iupdate(ip);
+          unlockInum(ip->inum);  
+        }
+      
   }
+  iunlockput(ip);
   return 0;
   bad:
   iunlockput(ip);
@@ -555,10 +559,10 @@ sys_funprot(void)
 int 
 sys_funlock(void)
 {
-  char *pathname;
-  char *password;
+  char pathname[DIRSIZ],password[10];
   struct inode *ip;
-  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+
+  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
@@ -567,8 +571,7 @@ sys_funlock(void)
   {
     if(strncmp(ip->pass,password,strlen(ip->pass))==0)
     {
-      ip->pidfunlock=proc->pid;
-      iupdate(ip);
+      setlocked_files(ip->inum,proc->pid,1);
     }
     else
     {

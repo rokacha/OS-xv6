@@ -211,7 +211,9 @@ iupdate(struct inode *ip)
   dip->minor = ip->minor;
   dip->nlink = ip->nlink;
   dip->size = ip->size;
+  dip->lock = ip->lock;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+   memmove(dip->pass, ip->pass, sizeof(ip->pass));
   log_write(bp);
   brelse(bp);
 }
@@ -249,7 +251,6 @@ iget(uint dev, uint inum)
   ip->flags = 0;
   ip->lock=0;
   strncpy(ip->pass,0,strlen(ip->pass));
-  ip->pidfunlock=-1;
   release(&icache.lock);
 
   return ip;
@@ -292,7 +293,9 @@ ilock(struct inode *ip)
     ip->minor = dip->minor;
     ip->nlink = dip->nlink;
     ip->size = dip->size;
+    ip->lock = dip->lock;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    memmove(ip->pass, dip->pass, sizeof(ip->pass));
     brelse(bp);
     ip->flags |= I_VALID;
     if(ip->type == 0)
@@ -643,6 +646,8 @@ namex(char *path, int nameiparent, char *name)
   else
     ip = idup(proc->cwd);
 
+ 
+    
   while((path = skipelem(path, name)) != 0){
     ilock(ip);
     if(ip->type != T_DIR){
@@ -673,6 +678,19 @@ namei(char *path)
 {
   char name[DIRSIZ];
   return namex(path, 0, name);
+}
+
+int
+checklock(struct inode *ip)
+{
+   if(ip->lock)
+  {
+      if(getlocked_files(ip->inum,proc->pid)==0)//locked for me
+        {
+          return -1;
+        }
+  }
+  return 0;//on success
 }
 
 struct inode*
@@ -793,7 +811,6 @@ deref_path(char* path,char* newpath,uint dereflast)
   strncpy(newpath,final_path,DIRSIZ);
   return 0;
 }
-
 
 
 
