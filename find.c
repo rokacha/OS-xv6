@@ -67,7 +67,8 @@ f_find(char* start_path)
   struct dirent de;
   struct stat st,newst;
   
-  printf(1,"got start_path = %s\n",start_path);
+  //printf(1,"got start_path = %s\n",start_path);
+  //printf(1,"got path = %s\n",path);
   
   if((fd = open(start_path, (follow) ? O_RDONLY: O_RDONLY | O_IGNORE)) < 0){
     printf(2, "find: cannot open %s\n", start_path);
@@ -80,37 +81,47 @@ f_find(char* start_path)
     return;
   }
   
-printf(1,"got HERE\n");
+//printf(1,"got HERE\n");
     while(read(fd, &de, sizeof(de)) == sizeof(de))
     {
+       strcpy(full_path,start_path);
+       p=full_path+strlen(full_path);
+       if (strcmp(start_path,"/")!=0)
+       {
+	 p[0]='/';
+	  p++;
+       }
+       strcpy(p,de.name);
+       p=p+strlen(de.name);
+       p[0]='\0';
+       
       if((de.inum == 0) || (strcmp(de.name,"..")==0)||(strcmp(de.name,".")==0))
         continue;  
       
-      if((newfd = open(de.name, (follow) ? O_RDONLY: O_RDONLY | O_IGNORE)) < 0)
+      if((newfd = open(full_path, (follow) ? O_RDONLY: O_RDONLY | O_IGNORE)) < 0)
       {
-	printf(2, "find: cannot access %s\n", de.name);
+	printf(2, "find: cannot access %s/%s (1)\n", start_path,de.name);
 	continue;  
       }    
       if(fstat(newfd , &newst) < 0)
       {
-      printf(2, "find: cannot stat %s\n", de.name);
+      printf(2, "find: cannot stat %s/%s\n", start_path,de.name);
       close(newfd);
       continue;  
       }
-      strcpy(full_path,start_path);
-      p=full_path+strlen(full_path);
-      p[0]='\0';
+
       switch(newst.type)
       {
 	case T_DIR:
 	  
 	  if(check(de,newst))
-	    printf(1,"%d\n",full_path);
+	    printf(1,"%s\n", full_path);
 	  f_find(full_path);
 	break;
+	
 	default:
 	  if(check(de,newst))
-	    printf(1,"%d\n",full_path);
+	    printf(1,"%s\n", full_path);
 	break;	  
       }
       close(newfd);  
@@ -149,7 +160,10 @@ main(int argc, char *argv[])
       if(i<argc-1)
       {
 	checkname=1;
-	strcpy(path,argv[i+1]);
+	if (strcmp(argv[i+1],"/")==0)
+	  strcpy(path,".\0");
+	else
+	  strcpy(path,argv[i+1]);
 	i++;
       }
       else

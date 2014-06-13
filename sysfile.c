@@ -288,7 +288,7 @@ sys_open(void)
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-cprintf("sys_open : omode state is %d\n",omode);
+
   if(omode & O_CREATE){
     begin_trans();
     ip = create(path, T_FILE, 0, 0);
@@ -298,7 +298,7 @@ cprintf("sys_open : omode state is %d\n",omode);
   } 
   else 
   {
-    cprintf("sys_open : path is %s and ignore state is %d\n",path,omode & O_IGNORE);
+
     if((omode & O_IGNORE) !=0)
     {
       if((ip = namei_ignore_slink(path)) == 0)
@@ -341,6 +341,7 @@ cprintf("sys_open : omode state is %d\n",omode);
   f->off = 0;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+  f->ignore_slink= (omode & O_IGNORE);
   return fd;
 }
 
