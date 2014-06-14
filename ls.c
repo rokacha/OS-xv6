@@ -30,7 +30,6 @@ ls(char *path)
   int fd;
   struct dirent de;
   struct stat st;
-  printf(1, "ls : ignore flag is %d\n",O_IGNORE);
   if((fd = open(path, O_IGNORE)) < 0){
     printf(2, "ls: cannot open %s\n", path);
     return;

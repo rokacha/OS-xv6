@@ -480,7 +480,7 @@ sys_symlink(void)
   
   if((ip = create(new,  T_SLINK, 0, 0)) == 0)
     return -1;
-  
+  //cprintf("created %s with type of  %d\n",new,ip->type);
   writei(ip, old, 0, strlen(old));
   iunlockput(ip);
   commit_trans();

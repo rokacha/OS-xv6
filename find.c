@@ -205,7 +205,7 @@ main(int argc, char *argv[])
     else
     if(strcmp(argv[i],"-type")==0)
     {
-      if((i<argc-1) && (strlen(argv[i])==1))
+      if((i<argc-1) && (strlen(argv[i+1])==1))
       {
 	checktype=1;
 	i++;
@@ -229,6 +229,7 @@ main(int argc, char *argv[])
       }
       else
       {
+	printf(1,"got that the length of the char is %d\n",strlen(argv[i]));
 	err_made:
 	printf(1,"Error : Incorrect Use of types , use -help\n");
 	goto bad_use;
@@ -242,6 +243,6 @@ main(int argc, char *argv[])
   exit();
   
   bad_use:   
-  printf(1,"Usage: find <path> <options> <preds>");
+  printf(1,"Usage: find <path> <options> <preds>\n");
   exit();
 }
