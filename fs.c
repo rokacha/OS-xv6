@@ -764,14 +764,14 @@ deref_path(char* path,char* newpath)
     iunlockput(ip);
     path=path+strlen(temp); //move to end of current dirent
     
+    memmove(temp,fp,strlen(temp));
+    fp=fp+strlen(temp);
+    
     if(strlen(final_path)+strlen(path)>DIRSIZ)
     {
       panic("deref_path : path name too long");
       return -1;
     }
-    
-    memmove(temp,fp,strlen(temp));
-    fp=fp+strlen(temp);
     
     for(i=0;i<DIRSIZ;i++)
     {
