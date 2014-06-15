@@ -212,8 +212,9 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   dip->lock = ip->lock;
+  
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-   memmove(dip->pass, ip->pass, sizeof(ip->pass));
+  memmove(dip->pass, ip->pass, sizeof(ip->pass));
   log_write(bp);
   brelse(bp);
 }

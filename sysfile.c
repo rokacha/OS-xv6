@@ -316,7 +316,6 @@ sys_open(void)
     {
       if(getlocked_files(ip->inum,proc->pid)==0)//locked for me
       {
-	cprintf("file $s is locked for process %d\n",path,proc->pid);
         iunlockput(ip);
         return -1;
       }
@@ -525,39 +524,49 @@ sys_fprot(void)
 {
   char *pathname,*password;
   struct inode *ip;
-cprintf("1\n");
+
   if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
     return -1;
-  cprintf("path : %s, pass %s\n",pathname,password  );
+  
   if((ip = namei(pathname)) == 0)
     return -1;
+  
+  begin_trans();
   
   ilock(ip);
   if(ip->type!=T_FILE)
     goto bad;
   if(ip->flags == I_BUSY || ip->lock)
     goto bad;
+  if (strlen(password)>10)
+  {
+    cprintf("password set is too long\n");
+     goto bad;
+  }
   strncpy(ip->pass,password,strlen(password));
-  cprintf("1\n");
+  
   ip->lock=1;
   iupdate(ip);
   iunlockput(ip);
+  commit_trans();
   return 0;
   
   bad:
   iunlockput(ip);
+  commit_trans();
   return -1;
 }
 int 
 sys_funprot(void)
 {
-  char pathname[DIRSIZ],password[10];
+  char *pathname,*password;
   struct inode *ip;
 
-  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
+  begin_trans();
   ilock(ip);
   
   if(ip->lock)
@@ -574,8 +583,12 @@ sys_funprot(void)
       
   }
   iunlockput(ip);
+  commit_trans();
   return 0;
+  
+  
   bad:
+  commit_trans();
   iunlockput(ip);
   return -1;
 }
@@ -583,10 +596,10 @@ sys_funprot(void)
 int 
 sys_funlock(void)
 {
-  char pathname[DIRSIZ],password[10];
+  char *pathname,*password;
   struct inode *ip;
 
-  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
     return -1;
   if((ip = namei(pathname)) == 0)
     return -1;
