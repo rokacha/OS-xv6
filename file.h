@@ -3,6 +3,7 @@ struct file {
   int ref; // reference count
   char readable;
   char writable;
+  char ignore_slink;
   struct pipe *pipe;
   struct inode *ip;
   uint off;
@@ -15,14 +16,16 @@ struct inode {
   uint inum;          		// Inode number
   int ref;            		// Reference count
   int flags;          		// I_BUSY, I_VALID
-  char slink_path[14];		// support for symbolic links
+  //char slink_path[14];		// support for symbolic links
   short type;         		// copy of disk inode
   short major;
   short minor;
   short nlink;
   uint size;
   uint addrs[NDIRECT+2];
-  char align[15*4-14]; 
+  char pass[10];
+  char lock;
+  char align[71]; 
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

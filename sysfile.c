@@ -280,20 +280,15 @@ create(char *path, short type, short major, short minor)
 int
 sys_open(void)
 {
-  char *path,newpath[DIRSIZ];
+  char *path;
+  
   int fd, omode;
   struct file *f;
   struct inode *ip;
 
   if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
     return -1;
-  
-  if(!(omode & O_IGNORE))
-  {
-    deref_path(path,newpath);
-    path=newpath;
-  }
-  
+
   if(omode & O_CREATE){
     begin_trans();
     ip = create(path, T_FILE, 0, 0);
@@ -303,13 +298,35 @@ sys_open(void)
   } 
   else 
   {
-    if((ip = namei(path)) == 0)
-      return -1;
+
+    if((omode & O_IGNORE) !=0)
+    {
+      if((ip = namei_ignore_slink(path)) == 0)
+	return -1;
+    }
+    else
+    {
+      if((ip = namei(path)) == 0)
+	return -1;
+    }
+    
     ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
+
+    if(ip->lock)
+    {
+      if(getlocked_files(ip->inum,proc->pid)==0)//locked for me
+      {
+	cprintf("file $s is locked for process %d\n",path,proc->pid);
+        iunlockput(ip);
+        return -1;
+      }
+    }
+  
+    if(ip->type == T_DIR && ((omode & O_RDONLY)!=0) ){
       iunlockput(ip);
       return -1;
     }
+
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
@@ -325,6 +342,7 @@ sys_open(void)
   f->off = 0;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+  f->ignore_slink= (omode & O_IGNORE);
   return fd;
 }
 
@@ -369,11 +387,26 @@ int
 sys_chdir(void)
 {
   char *path;
+  //char newpath[14];
   struct inode *ip;
 
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0)
+  if(argstr(0, &path) < 0)
     return -1;
+/*  
+  if(deref_path(path,newpath,1)>=0)
+    path = newpath;
+    
+  */
+  if((ip = namei(path)) == 0)
+    return -1;
+
   ilock(ip);
+  if(checklock(ip)<0)
+   {
+     iunlockput(ip);
+     return -1;
+   }
+  
   if(ip->type != T_DIR){
     iunlockput(ip);
     return -1;
@@ -434,62 +467,165 @@ sys_pipe(void)
   return 0;
 }
 
+
 int
 sys_symlink(void)
 {
- char name[DIRSIZ], *new, *old;
-  struct inode *dp, *newp, *ip;
-
+  char *old, *new;
+  struct inode *ip;
+  
   if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
     return -1;
-  if((ip = namei(old)) == 0)
-    return -1;
-
-    
+  
   begin_trans();
   
-    newp = create(new,T_FILE, 0, 0);
-    ilock(newp);
-    newp->type |= FD_SLINK;
-    memmove(&newp->slink_path,old,DIRSIZ);    
-    iupdate(newp);
-    
-    if((dp = nameiparent(new, name)) == 0)
-    {
-      iunlockput(newp);
-      commit_trans();
-      return -1;
-    }
-    
-    ilock(dp);
-    if(dp->dev != ip->dev || dirlink(dp, name, newp->inum) < 0){
-      iunlockput(dp);
-      iunlockput(newp);
-      commit_trans();
-      cprintf("got here\n");
-      return -1;
-    }
-    iunlockput(dp);
-    iunlockput(newp);
-    commit_trans();
-
+  if((ip = create(new,  T_SLINK, 0, 0)) == 0)
+    return -1;
+  //cprintf("created %s with type of  %d\n",new,ip->type);
+  writei(ip, old, 0, strlen(old));
+  iunlockput(ip);
+  commit_trans();
+  
   return 0;
-
 }
 
 int
 sys_readlink(void)
 {
   char *buf,*pathname;
-  int bufsize;
+  int bufsize,i;
   struct inode *ip;
 
   if(argstr(0, &pathname) < 0 || argstr(1, &buf) || argint(2, &bufsize) < 0)
     return -1;
-  if((ip = namei(pathname)) == 0)
+  char tbuf[bufsize+1];
+  for(i=0;i<bufsize+1;i++)
+    tbuf[i]='\0';
+  if((ip = namei_ignore_slink(pathname)) == 0)
     return -1;
-  if(deref_slink(ip,buf,bufsize)!=0)
-    return -1;
-  
+  ilock(ip);
+  while(ip->type == T_SLINK)
+  {
+    i=readi(ip, tbuf, 0, bufsize);
+    tbuf[i]=0;
+    //cprintf("sys_readlink: tbuf is %s\n",tbuf);
+    iunlockput(ip);
+    if((ip = namei_ignore_slink(tbuf)) == 0)
+      return -1;
+    ilock(ip);
+  }
+  iunlockput(ip);
+  memmove(buf,tbuf,bufsize);
+ 
   return 0;
 }
+
+int 
+sys_fprot(void)
+{
+  char *pathname,*password;
+  struct inode *ip;
+cprintf("1\n");
+  if(argstr(0, &pathname) < 0 || argstr(1, &password) < 0)
+    return -1;
+  cprintf("path : %s, pass %s\n",pathname,password  );
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  cprintf("1\n");
+  ilock(ip);
+  if(ip->type!=T_FILE)
+    goto bad;
+  if(ip->flags == I_BUSY || ip->lock)
+    goto bad;
+  strncpy(ip->pass,password,strlen(password));
+  ip->lock=1;
+  iupdate(ip);
+  iunlockput(ip);
+  return 0;
+  
+  bad:
+  iunlockput(ip);
+  return -1;
+}
+int 
+sys_funprot(void)
+{
+  char pathname[DIRSIZ],password[10];
+  struct inode *ip;
+
+  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
+    return -1;
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  ilock(ip);
+  
+  if(ip->lock)
+  {
+    if(strncmp(ip->pass,password,strlen(password))!=0)
+      goto bad;
+    else
+        {
+          ip->lock=0;
+          memset(ip->pass,'\0',strlen(ip->pass));
+          iupdate(ip);
+          unlockInum(ip->inum);  
+        }
+      
+  }
+  iunlockput(ip);
+  return 0;
+  bad:
+  iunlockput(ip);
+  return -1;
+}
+
+int 
+sys_funlock(void)
+{
+  char pathname[DIRSIZ],password[10];
+  struct inode *ip;
+
+  if(argstr(0, (char**)&pathname) < 0 || argstr(1, (char**)&password) < 0)
+    return -1;
+  if((ip = namei(pathname)) == 0)
+    return -1;
+  ilock(ip);
+  if(ip->lock)
+  {
+    if(strncmp(ip->pass,password,strlen(ip->pass))==0)
+    {
+      setlocked_files(ip->inum,proc->pid,1);
+    }
+    else
+    {
+      iunlockput(ip);
+      return -1;
+    }
+  }
+  iunlockput(ip);
+  return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

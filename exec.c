@@ -11,16 +11,27 @@ int
 exec(char *path, char **argv)
 {
   char *s, *last;
+  //char temppath[14];
   int i, off;
   uint argc, sz, sp, ustack[3+MAXARG+1];
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
+/*
+  if(deref_path(path,temppath,1)>=0)
+    path=temppath;
+  */
+  //cprintf("path is %s\n",path);
 
   if((ip = namei(path)) == 0)
     return -1;
   ilock(ip);
+  if(checklock(ip)<0)
+   {
+     iunlockput(ip);
+     return -1;
+   }
   pgdir = 0;
 
   // Check ELF header
@@ -90,6 +101,7 @@ exec(char *path, char **argv)
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
+  //cprintf("exec :Done\n");
   return 0;
 
  bad:
