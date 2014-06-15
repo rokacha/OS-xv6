@@ -531,13 +531,14 @@ cprintf("1\n");
   cprintf("path : %s, pass %s\n",pathname,password  );
   if((ip = namei(pathname)) == 0)
     return -1;
-  cprintf("1\n");
+  
   ilock(ip);
   if(ip->type!=T_FILE)
     goto bad;
   if(ip->flags == I_BUSY || ip->lock)
     goto bad;
   strncpy(ip->pass,password,strlen(password));
+  cprintf("1\n");
   ip->lock=1;
   iupdate(ip);
   iunlockput(ip);
